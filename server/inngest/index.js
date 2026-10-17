@@ -25,6 +25,7 @@ const syncUserCreation = inngest.createFunction(
       username: username,
       full_name: `${first_name || ""} ${last_name || ""}`.trim(),
       profile_picture: image_url,
+      username,
     };
 
     await User.create(userData);

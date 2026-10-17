@@ -4,7 +4,7 @@ import Loading from "../components/Loading";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { input, p } from "framer-motion/client";
+import { input } from "framer-motion/client";
 import loading from "../components/Loading";
 
 const Search = () => {
