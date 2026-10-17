@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import { serve } from "inngest/express";
-import connectDB from "./configs/db.js";
 import { functions, inngest } from "./inngest/index.js";
 
 const app = express();
@@ -10,17 +9,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// مسار فحص حالة السيرفر
-app.get("/", async (req, res) => {
-  try {
-    await connectDB();
-    res.send("Server is running and Database is connected!");
-  } catch (error) {
-    res.status(500).send(`Server is running, but DB failed: ${error.message}`);
-  }
+// مسار فحص حالة السيرفر (سريع وخفيف للتأكد أن السيرفر Live)
+app.get("/", (req, res) => {
+  res.status(200).send("Poster server is live and running!");
 });
 
-// مسار Inngest
+// مسار استقبال أحداث Inngest
 app.use(
   "/api/inngest",
   serve({
@@ -30,9 +24,9 @@ app.use(
   })
 );
 
-// تشغيل المنفذ محلياً فقط وتصدير التطبيق لـ Vercel
-const PORT = process.env.PORT || 4000;
+// تشغيل المنفذ محلياً فقط وتصدير التطبيق لبيئة Vercel
 if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 4000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
