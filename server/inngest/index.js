@@ -3,7 +3,7 @@ import connectDB from "../configs/db.js";
 import User from "../models/User.js";
 
 // إنشاء العميل
-export const inngest = new Inngest({ id: "poster" });
+export const inngest = new Inngest({ id: "my-app" });
 
 // 1. دالة إنشاء المستخدم
 const syncUserCreation = inngest.createFunction(
