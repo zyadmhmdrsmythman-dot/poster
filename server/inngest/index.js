@@ -4,23 +4,30 @@ import User from "../models/User.js";
 
 export const inngest = new Inngest({ id: "poster" });
 
+// 1. Inngest function to save user data
 const syncUserCreation = inngest.createFunction(
-  { id: "sync-user-from-clerk" },
-  { event: "clerk/user.created" },
+  {
+    id: "sync-user-from-clerk",
+    triggers: [{ event: "clerk/user.created" }]
+  },
   async ({ event }) => {
     await connectDB();
 
     const { id, first_name, last_name, email_addresses, image_url } = event.data;
 
-    let username = email_addresses[0].email_address.split("@")[0];
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
+    // استخراج الإيميل بأمان
+    const email = email_addresses?.[0]?.email_address || "";
+
+    // استخراج اسم المستخدم بأمان
+    let username = email ? email.split("@")[0] : `user_${id.slice(-6)}`;
+    const user = await User.findOne({ username });
+    if (user) {
       username = `${username}${Math.floor(Math.random() * 10000)}`;
     }
 
     const userData = {
       _id: id,
-      email: email_addresses[0].email_address,
+      email: email,
       username: username,
       full_name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
       profile_picture: image_url,
