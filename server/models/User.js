@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
     followers:{type:String, ref:"User"},
     following:{type:String, ref:"User"},
     connections:{type:String, ref:"User"},
+    location:{type:String, default:""},
+
     
 },  {timestamps:true, minimize:false})
 

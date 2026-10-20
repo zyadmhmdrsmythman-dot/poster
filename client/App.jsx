@@ -12,11 +12,19 @@ import NotificationsPage from "./src/pages/NotificationsPage";
 import Layout from "./src/pages/Layout";
 import Login from "./src/pages/Login"
 import NotFund from "./src/pages/NotFund"
-import {useUser} from "@clerk/clerk-react"
+import {useUser , useAuth } from "@clerk/clerk-react"
 import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
 
 const App = () => {
   const {user} = useUser()
+  const {getToken} = useAuth()
+
+  useEffect(() => {
+    if(user){
+      getToken().then((token)=> console.log(token))
+    }
+  })
   return (
     <>
     <Toaster />
