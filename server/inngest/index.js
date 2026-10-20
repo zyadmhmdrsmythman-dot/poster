@@ -83,8 +83,10 @@ const syncUserDeletion = inngest.createFunction(
 //ingest function to send reminder when a new connction request is aded
 
 const sendNewConnectionRequestReminder = inngest.createFunction(
-  { id: "send-new-connection-request-reminder" },
-  { event: "app/connection-request" },
+  {
+    id: "send-new-connection-request-reminder",
+    triggers: [{ event: "app/connection-request" }],
+  },
   async ({ event, step }) => {
     const { connectionId } = event.data;
     await step.run("send-connection-request-mail", async () => {
@@ -141,8 +143,10 @@ to accept or reject the request</p>
 );
 
 const deleteStory = inngest.createFunction(
-  { id: "story-delete" },
-  { event: "app/story.delete" },
+  {
+    id: "story-delete",
+    triggers: [{ event: "app/story.delete" }],
+  },
   async ({ event, step }) => {
     const { storyId } = event.data;
     const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -155,8 +159,10 @@ const deleteStory = inngest.createFunction(
 );
 
 const sendNotificationOfUnseenMessages = inngest.createFunction(
-  { id: "seen-unseen-messages-notification" },
-  { event: "TZ=Amrica/NEW_YOURK 0 9 * * * *" },
+  {
+    id: "seen-unseen-messages-notification",
+    triggers: [{ cron: "TZ=America/New_York 0 9 * * *" }],
+  },
   async ({ step }) => {
     const messages = await Message.find({ seen: false }).populate(
       "to_user_id",
