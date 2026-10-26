@@ -1,9 +1,10 @@
 import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios.js";
 import { ArrowLeft, Sparkle, TextIcon, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
-const StoryWindow = ({ setShowModal }) => {
+const StoryWindow = ({ setShowModal , fetchStories }) => {
   const { getToken } = useAuth();
 
   const bgColors = [
@@ -21,38 +22,71 @@ const StoryWindow = ({ setShowModal }) => {
   const [text, setText] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // useEffect(() => {
-  //   return () => {
-  //     if (previewUrl) {
-  //       URL.revokeObjectURL(previewUrl);
-  //     }
-  //   };
-  // }, [previewUrl]);
+  const MAX_DURATION = 60
+  const MAX_SIZE = 50
 
-  const handleMediaUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+  const handleMediaUpload = (e)=>{
+    const file = e.target.files?.[0]
+    if(file.type.startsWith("video")){
+      if(file.size > MAX_SIZE * 1024 * 1024){
+        toast.error(`video file size canoot exceed ${MAX_SIZE}Mb.`)
+        setMedia(null)
+        setPreviewUrl(null)
+        return;
+      }
+      const video = document.createElement("video")
+      video.preload = 'metadata'
+      video.onloadedmetadata = ()=>{
+        window.URL.revokeObjectURL(video.src)
+        if(video.duration > MAX_DURATION){
+          toast.error("Video duration canoot exceed 1 minute.")
+          setMedia(null)
+          setPreviewUrl(null)
+        }else{
+          setMedia(file)
+          setPreviewUrl(URL.createObjectURL(file))
+          setText("")
+          setMode("media")
+        }
+      }
+      video.src = URL.createObjectURL(file)
+    }else if(file.type.startsWith("image")){
+      setMedia(file)
+      setPreviewUrl(URL.createObjectURL(file))
+      setText("")
+      setMode("media")
     }
+  }
 
-    setMedia(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setMode("media");
-  };
-
-  const handleCreateStory = async () => {
-    if (mode === "text" && !text.trim()) {
-      throw new Error("Please write text story");
+  const handleCreateStory = async()=>{
+    const media_type = mode === "media" ? media?.type.startsWith("image") ?
+    "image" : "video" : "text"
+    if(media_type === "text" && !text){
+      throw new Error("please enter some text")
     }
-    if (mode === "media" && !media) {
-      throw new Error("Please select Photo/Video");
+    let fromData = new FormData()
+    fromData.append("content" , text)
+    fromData.append("media_type" , media_type)
+    fromData.append("media" , media)
+    fromData.append("background_color" , background)
+    const token = await getToken()
+    try{
+      const {data} = await api.post("/api/story/create" , fromData , {
+        headers:{Authorization: `Bearer ${token}`}
+      })
+      if(data.success){
+        setShowModal(false)
+        toast.success("Story created successfully")
+        fetchStories()
+      }else{
+        toast.error(data.message)
+      }
+    }catch(error){
+        toast.error(error.message)
+
     }
-
-
-    setShowModal(false);
-  };
+  }
 
   return (
     <div

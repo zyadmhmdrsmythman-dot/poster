@@ -4,22 +4,48 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import sample_cover from "../assets/sample_cover.jpg";
 import sample_profile from "../assets/sample_profile.jpg";
+import { useSelector } from "react-redux";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios";
 
 const CreatePost = () => {
   const [content, setContent] = useState("");
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-   const [user, setUser] = useState({
-      _id: "1",
-      username: "Ziead mohamed",
-      full_name: "Ziead mohamed",
-      profile_picture: sample_profile,
-      cover_photo: sample_cover,
-      bio: "This is a bio",
-      isFollowed: false,
-    });
-    const handleSubmit = ()=>{}
+  const user = useSelector((state) => state.user?.value)
+  const {getToken} = useAuth()
+
+  const handleSubmit = async()=>{
+    if(!images.length && !content){
+      toast.error("Please Add At least one image or text")
+    }
+    setLoading(true)
+    const postType = images.length && content
+    ? "text_with_image"
+    :images.length
+    ?"image"
+    :"text"
+
+    try{
+      const fromData = new FormData()
+      fromData.append("content" , content)
+      fromData.append("post_type" , postType)
+      images.forEach((image)=>fromData.append("images" , image))
+      const {data} = await api.post("/api/post/add" , fromData,{
+        headers:{Authorization: `Bearer ${await getToken()}`,}
+      });
+      if(data.success){
+        navigate("/")
+      }else{
+        throw new Error(data.message)
+      }
+    }catch(error){
+      console.log(error.message);
+      toast.error("Post Not Added")
+    }
+    setLoading(false)
+  }
   return (
     <div
       className="min-h-screen bg-linear-to-br from-[#0b0f3b] via-[#1a1f7f] to-[#3c1f7f]

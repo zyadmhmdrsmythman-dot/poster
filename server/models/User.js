@@ -8,10 +8,11 @@ const userSchema = new mongoose.Schema({
     bio:{type:String, default:"Hey I am using Poster"},
     profile_picture:{type:String, default:""},
     cover_photo:{type:String, default:""},
-    followers:{type:String, ref:"User"},
-    following:{type:String, ref:"User"},
-    connections:{type:String, ref:"User"},
+    followers:[{type:String, ref:"User"}],
+    following:[{type:String, ref:"User"}],
+    connections:[{type:String, ref:"User"}],
     location:{type:String, default:""},
+    blockedUsers: [{type:String , ref: "User"}]
 
     
 },  {timestamps:true, minimize:false})

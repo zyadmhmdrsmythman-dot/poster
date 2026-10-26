@@ -7,6 +7,7 @@ import Connection from "../models/connections.js";
 
 //get user data using userId
 import { getAuth } from "@clerk/express";
+import Post from "../models/Post.js"
 
 export const getUserData = async (req, res) => {
   try {
@@ -305,4 +306,99 @@ export const acceptConnectionRequest = async (req,res) =>{
     console.log(error.message);
     res.json({ success: false, message: error.message });
   }
+}
+
+//========== GET PROFILE =============
+export const getUserProfile = async (req, res) => {
+  try {
+    const { profileId } = req.body;
+    if (!profileId) {
+      return res.json({ success: false, message: "profileId is required" });
+    }
+
+    const profileDoc = await User.findById(profileId).select(
+      "_id full_name username profile_picture cover_photo bio location blockedUsers"
+    );
+
+    if (!profileDoc) {
+      return res.json({ success: false, message: "profile not found" });
+    }
+
+    const profile = profileDoc.toObject();
+
+    // جلب معرف المستخدم الحالي عبر getAuth(req)
+    const { userId } = getAuth(req);
+    const currentUser = await User.findById(userId).select("blockedUsers");
+
+    const isBlocked = Boolean(
+      currentUser?.blockedUsers?.some((id) => String(id) === String(profile._id)) ||
+      profile?.blockedUsers?.some((id) => String(id) === String(userId))
+    );
+
+    let posts = [];
+    if (!isBlocked) {
+      posts = await Post.find({ user: profileId })
+        .sort({ createdAt: -1 })
+        .populate("user", "_id full_name username profile_picture");
+    }
+
+    delete profile.blockedUsers;
+
+    // الرد يتم إرساله دائماً سواء كان المستخدم محظوراً أم لا
+    return res.json({
+      success: true,
+      profile,
+      posts,
+      isBlocked,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+// ============== BLOCK USER ==========
+
+export const blockUser = async(req,res)=>{
+    try{
+        const {userId} = req.auth()
+        const {userIdToBlock} = req.body
+        const currentUser = await User.findById(userId)
+        if(!currentUser.blockedUsers.includes(userIdToBlock)){
+            currentUser.blockedUsers.push(userIdToBlock)
+            await currentUser.save()
+        }
+        return res.json({
+            success:true,
+            message:"User blocked successfully",
+            blockedUsers:currentUser.blockedUsers,
+        })
+
+    }catch(error){
+    console.log(error);
+    res.json({success:false , message:error.message})
+    }
+}
+
+//============ Unblock User ==============
+
+export const unblockUser = async(req,res)=>{
+    try{
+        const {userId} = req.auth()
+        const {userIdToUnblock} = req.body
+        const currentUser = await User.findById(userId)
+        currentUser.blockedUsers = currentUser.blockedUsers.filter(
+            (id) => String(id) !== String(userIdToUnblock)
+        );
+        await currentUser.save()
+        return res.json({
+            success:true,
+            message:"User unblocked successfully",
+            blockedUsers:currentUser.blockedUsers,
+        })
+
+    }catch(error){
+    console.log(error);
+    res.json({success:false , message:error.message})
+    }
 }

@@ -6,6 +6,11 @@ import { clerkMiddleware } from "@clerk/express";
 import { functions, inngest } from "./inngest/index.js";
 import userRouter from "./routes/userRoutes.js";
 import connectDB from "./configs/db.js";
+import postRouter from "./routes/postRoutes.js";
+import storyRouter from "./routes/storyRoutes.js"
+import messageRouter from "./routes/messageRouter.js";
+import { getUserNotifications } from "./contollers/notificationController.js";
+import notificationRouter from "./routes/notificationRoutes.js";
 
 const app = express();
 
@@ -21,6 +26,10 @@ app.get("/", (req, res) => {
 
 // مسارات التطبيق
 app.use("/api/user", userRouter);
+app.use("/api/post" , postRouter);
+app.use("/api/story" , storyRouter);
+app.use("/api/message" , messageRouter);
+app.use("/api/notifications", notificationRouter);
 
 // مسار استقبال أحداث Inngest
 app.use(

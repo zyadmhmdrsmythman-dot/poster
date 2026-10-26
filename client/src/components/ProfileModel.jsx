@@ -1,35 +1,65 @@
+import { useAuth } from "@clerk/clerk-react";
 import { Pencil } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import sample_cover from "../assets/sample_cover.jpg";
-import sample_profile from "../assets/sample_profile.jpg";
+import { useDispatch , useSelector} from "react-redux";
+import { UpdateUser } from "../features/user/userSlice";
 
-const ProfileModel = ({setShowEdit}) => {
-  const [user, setUser] = useState({
-      _id: "1",
-      username: "Ziead mohamed",
-      full_name: "Ziead mohamed",
-      profile_picture: sample_profile,
-      cover_photo: sample_cover,
-      bio: "This is a bio",
-      isFollowed: false,
-      location:"egypt",
-    });
-  const [editForm, setEditForm] =
-    useState (
-      {
-        username: user.username,
-        bio: user.bio,
-        location: user.location,
-        profile_picture: null,
-        cover_photo: null,
-        full_name: user.full_name,
-      }
-    );
+const ProfileModel = ({setShowEdit, onSuccess }) => {
+  const dispatch = useDispatch()
+  const {getToken} = useAuth()
+  const user = useSelector((state)=> state.user?.value)
 
-    const handleSaveProfile = ()=>{
+  const [editForm , setEditForm] = useState({
+    username:user?.username || "",
+    bio:user?.bio || "",
+    location:user?.location || "",
+    profile_picture:null,
+    cover_photo:null,
+    full_name:user?.full_name || "",
+  })
 
+  // useEffect(() => {
+  //   if (user) {
+  //     setEditForm((prev) => ({
+  //       ...prev,
+  //       username: user.username || "",
+  //       bio: user.bio || "",
+  //       location: user.location || "",
+  //       full_name: user.full_name || "",
+  //     }));
+  //   }
+  // }, [user]);
+
+  const handleSaveProfile = async(e)=>{
+    e.preventDefault()
+    try{
+      const userData = new FormData()
+      const{
+        full_name,
+        username,
+        bio,
+        location,
+        profile_picture,
+        cover_photo
+      } = editForm;
+
+      userData.append("username" , username)
+      userData.append("location" , location)
+      userData.append("bio" , bio)
+      userData.append("full_name" , full_name)
+      profile_picture && userData.append("profile" , profile_picture)
+      cover_photo && userData.append("cover" , cover_photo)
+
+      const token = await getToken()
+      await dispatch(UpdateUser({ userData, token })).unwrap();
+      if (onSuccess) onSuccess();
+      setShowEdit(false);
+    }catch(error){
+      toast.error(error.message)
     }
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-md">
       <div className="flex items-start sm:items-center justify-center min-h-screen py-8 px-4">
@@ -145,7 +175,7 @@ const ProfileModel = ({setShowEdit}) => {
                   onChange={(e) =>
                     setEditForm({ ...editForm, [field.value]: e.target.value })
                   }
-                  value={editForm[field.value]}
+                  value={editForm[field.value] || ""}
                 />
               </div>
             ))}
@@ -162,7 +192,7 @@ const ProfileModel = ({setShowEdit}) => {
                 onChange={(e) =>
                   setEditForm({ ...editForm, bio: e.target.value })
                 }
-                value={editForm.bio}
+                value={editForm.bio || ""}
                 placeholder="Write something magical..."
               />
             </div>

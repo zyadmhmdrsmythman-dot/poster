@@ -2,23 +2,49 @@ import Loading from "../components/Loading";
 import logo from "../assets/logo.png";
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import StoriesBar from "../components/StoriesBar";
 import RecentMessages from "../components/RecentMessage";
 import PostCard from "../components/PostCard";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios.js";
+import toast from "react-hot-toast";
 
 function Feed() {
   const [feeds, setFeeds] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const {getToken, isLoaded, isSignedIn} = useAuth();
+
+  const fetchFeeds =useCallback( async ()=>{
+    try{
+      setLoading(true)
+      const token = await getToken();
+      if (!token) return;
+
+      const {data} = await api.get("/api/post/feed" , {
+        headers:{
+          Authorization : `Bearer ${await getToken()}` ,"Cache-Control": "no-cache",
+        },
+        
+      })
+      if(data.success){
+        setFeeds(data.posts || data.feeds || [])
+      }else{
+        toast.error(data.message || "Failed to fetch feeds")
+      }
+    }catch(error){
+        toast.error(error.message)
+    }
+    finally {
+    setLoading(false); }
+  }, [getToken]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
+  if (isLoaded && isSignedIn) {
+    fetchFeeds();
+  }
+}, [isLoaded, isSignedIn, fetchFeeds]);
 
   return !loading ? (
     <div className="h-full overflow-y-scroll no-scrollbar py-10 xl:pr-5 flex flex-col items-center bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white relative">

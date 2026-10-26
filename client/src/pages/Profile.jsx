@@ -4,48 +4,123 @@ import PostCard from "../components/PostCard";
 import sample_cover from "../assets/sample_cover.jpg";
 import sample_profile from "../assets/sample_profile.jpg";
 import ProfileModel from "../components/ProfileModel";
+import { useAuth } from "@clerk/clerk-react";
+import { useSelector } from "react-redux";
+import Loading from "../components/Loading";
+import toast from "react-hot-toast";
+import api from "../api/axios.js"
 
 const Profile = () => {
-  const currentUser = {
-    _id: "123",
-    username: "Max_code",
-    profile_picture: sample_profile,
-  };
 
-  const { profileId } = useParams();
-
-  const [user, setUser] = useState({
-    _id: "1",
-    username: "Ziead mohamed",
-    full_name: "Ziead mohamed",
-    profile_picture: sample_profile,
-    cover_photo: sample_cover,
-    bio: "This is a bio",
-    isFollowed: false,
-  });
-
-  const [posts, setPosts] = useState([
-    {
-      _id: "post1",
-      content: "Hello World!",
-      image_urls: ["/sample1.jpg", "/sample2.jpg"],
-    },
-  ]);
-
+  const {getToken} = useAuth()
+  const currentUser = useSelector((state) =>state.user.value)
+  const following = useSelector((state) =>state.connections?.following)
+  const {profileId} = useParams()
+  const [user, setUser] = useState(null);
+  const [posts, setPosts] = useState([]);
   const [activeTab, setActiveTab] = useState("posts");
   const [showEdit, setShowEdit] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
-  const isMyProfile = !profileId || profileId === currentUser?._id;
+  const isMyProfile = !profileId || profileId === currentUser?._id
 
-  const handleFollowToggle = () => {
-    setUser((prev) => ({ ...prev, isFollowed: !prev.isFollowed }));
+ const fetchUser = async(id)=>{
+
+    try{
+      const token = await getToken()
+      const {data} = await api.post(
+        "/api/user/profiles",
+        {profileId:id},
+        {headers:{Authorization : `Bearer ${token}`},}
+      )
+      if(data.success){
+        const followed = (following || []).some((u) => u?._id === data.profile?._id);
+        setUser({
+          ...data.profile,
+          isFollowed:followed
+        })
+        setIsBlocked(data.isBlocked)
+        if(!data.isBlocked){
+          setPosts(data.posts)
+        }else{
+          setPosts([])
+        }
+      }else{
+        toast.error(data.message || "Failed to load profile")
+      }
+    }catch(error){
+      toast.error(error.message);
+    }
+  }
+
+  const toggleBlock = async() => {
+    if(!user) return;
+    try{
+      const token = await getToken()
+      if(isBlocked){
+        const {data} = await api.post(
+          "/api/user/unblock",
+          {userIdToUnblock:user._id},
+          {headers:{Authorization : `Bearer ${token}`},}
+        )
+        if(data.success){
+          setIsBlocked(false)
+          fetchUser(user._id)
+          toast.success("User unblocked successfully")
+        }
+      }else{
+        const {data} = await api.post(
+          "/api/user/block",
+          {userIdToBlock:user._id},
+          {headers:{Authorization : `Bearer ${token}`},}
+        )
+        if(data.success){
+          setIsBlocked(true)
+          setPosts([])
+          toast.success("User bloacked successfully")
+        }
+      }
+    }catch(error){
+      toast.error(error.message);
+    }
   };
 
-  const toggleBlock = () => {
-    setIsBlocked((prev) => !prev);
-  };
+  const handleFollowToggle = async ()=>{
+    if(!user) return;
+    try{
+      const token = await getToken()
+      const endpoint = user.isFollowed ? "/api/user/unfollow" : "/api/user/follow";
+      const payload = {id:user._id}
+      const {data} = await api.post(endpoint , payload ,{
+        headers:{Authorization : `Bearer ${token}`},
+      })
+      if(data.success){
+        toast.success(data.message)
+        setUser((prev)=>({
+          ...prev,
+          isFollowed:!prev.isFollowed,
+        }))
+      }else{
+        toast.error(data.message)
+      }
 
+    }catch(error){
+      toast.error(error.message);
+    }
+  }
+
+  useEffect(() => {
+    if(!currentUser) return
+  if (profileId) {
+    fetchUser(profileId);
+  } else{
+    fetchUser(currentUser._id);
+  }
+}, [profileId, currentUser?._id]);
+  if(!currentUser) return(
+    <div><Loading /></div>
+  )
+  if(!user) return <Loading />
   return (
     <div className="relative min-h-screen bg-linear-to-br from-gray-900 via-purple-900 to-black overflow-y-scroll p-6">
       <div className="max-w-5xl mx-auto">
@@ -168,7 +243,8 @@ const Profile = () => {
             <p className="text-base">You have blocked this user.</p>
           </div>
         )}
-        {showEdit && <ProfileModel setShowEdit={setShowEdit}/>}
+        {showEdit && <ProfileModel setShowEdit={setShowEdit}
+        onSuccess={() => fetchUser(currentUser?._id)}/>}
       </div>
     </div>
   );
