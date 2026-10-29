@@ -98,7 +98,7 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
 <h2>Hi ${connection.to_user_id.full_name}, </h2>
 <p>You have a new connection request from ${connection.from_user_id.full_name}
 - @${connection.from_user_id.username}</p>
-<p>Click <a href="${process.env.FRONTEND_URL}/connections" style="color:#10b981;">here</a>
+<p>Click <a href="${(process.env.FRONTEND_URL || "https://poster-a.vercel.app")}/connections" style="color:#10b981;">here</a>
 to accept or reject the request</p>
 <br/>
 <p>Thanks , <br/>Postly - Stay Connected</p>
@@ -125,7 +125,7 @@ to accept or reject the request</p>
 <h2>Hi ${connection.to_user_id.full_name}, </h2>
 <p>You have a new connection request from ${connection.from_user_id.full_name}
 - @${connection.from_user_id.username}</p>
-<p>Click <a href="${process.env.FRONTEND_URL}/connections" style="color:#10b981;">here</a>
+<p>Click <a href="${(process.env.FRONTEND_URL || "https://poster-a.vercel.app")}/connections" style="color:#10b981;">here</a>
 to accept or reject the request</p>
 <br/>
 <p>Thanks , <br/>Postly - Stay Connected</p>
@@ -178,7 +178,7 @@ const sendNotificationOfUnseenMessages = inngest.createFunction(
       const body = `<div style="font-family:Arial, sans-serif; padding:20px;">
 <h2>Hi ${user.full_name}, </h2>
 <p>You have ${unseenCount[userId]} unseen messages</p>
-<p>Click <a href="${process.env.FRONTEND_URL}/messages" style="color:#10b981;">here</a>
+<p>Click <a href="${(process.env.FRONTEND_URL || "https://poster-a.vercel.app")}/messages" style="color:#10b981;">here</a>
 to view them</p>
 <br/>
 <p>Thanks , <br/>Postly - Stay Connected</p>

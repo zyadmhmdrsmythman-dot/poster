@@ -41,7 +41,7 @@ app.use(async (_req, res, next) => {
 });
 app.use(clerkMiddleware());
 const allowedSocketOrigins = [
-  process.env.FRONTEND_URL,
+  (process.env.FRONTEND_URL || "https://poster-a.vercel.app"),
   ...(process.env.CORS_ORIGINS || "").split(","),
   "https://poster-a.vercel.app",
 ]
@@ -65,12 +65,12 @@ io.use(async (socket, next) => {
   try {
     await connectDB();
     const token = socket.handshake.auth?.token;
-    if (!token || !process.env.CLERK_SECRET_KEY) {
+    if (!token || !(process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q")) {
       return next(new Error("Authentication required"));
     }
 
     const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
+      secretKey: (process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q"),
     });
     if (!payload.sub) {
       return next(new Error("Invalid authentication token"));
@@ -205,7 +205,7 @@ app.use(
   serve({
     client: inngest,
     functions,
-    signingKey: process.env.INNGEST_SIGNING_KEY,
+    signingKey: process.env.INNGEST_SIGNING_KEY || "signkey-prod-ce96989a79c777feb117ad057e484e18f066cc9b9875d50972f7c872da7299b9",
   })
 );
 

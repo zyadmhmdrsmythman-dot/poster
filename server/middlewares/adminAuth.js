@@ -2,7 +2,7 @@ import User from "../models/User.js";
 
 export const requireAdmin = (req, res, next) => {
   const checkAdmin = async () => {
-    const adminIds = (process.env.ADMIN_CLERK_IDS || "")
+    const adminIds = (process.env.ADMIN_CLERK_IDS || "user_3KsjwBBwc1GrwhyGttpMQXf1AvO")
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean);

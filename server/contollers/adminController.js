@@ -11,7 +11,7 @@ import { emitGroupEvent, emitUserEvent } from "../utils/groupSocket.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const getBootstrapAdminIds = () =>
-  (process.env.ADMIN_CLERK_IDS || "")
+  (process.env.ADMIN_CLERK_IDS || "user_3KsjwBBwc1GrwhyGttpMQXf1AvO")
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);

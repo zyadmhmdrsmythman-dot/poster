@@ -8,7 +8,7 @@ const connectDB = async () => {
     return;
   }
 
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI || "mongodb+srv://zyadmhmdrsmythman_db_user:Alah123456789@poster.vupcuo3.mongodb.net/poster?retryWrites=true&w=majority";
   if (!uri) {
     throw new Error("Missing MONGODB_URI");
   }
