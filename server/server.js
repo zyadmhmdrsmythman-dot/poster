@@ -31,7 +31,7 @@ app.use(clerkMiddleware());
 //wensocket setup
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://poster-a.vercel.app",
+    origin: "https://poster-kgh5.vercel.app",
     methods: ["GET", "POST"],
   },
 });
