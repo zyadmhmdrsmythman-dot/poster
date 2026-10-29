@@ -1,4 +1,8 @@
 import "dotenv/config";
+
+process.env.CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || "pk_test_Z3VpZGluZy10dXJ0bGUtNzQ5OS5jbGVyay5hY2NvdW50cy5kZXYk";
+process.env.CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q";
+
 import express from "express";
 import cors from "cors";
 import { serve } from "inngest/express";
@@ -39,7 +43,10 @@ app.use(async (_req, res, next) => {
     });
   }
 });
-app.use(clerkMiddleware());
+app.use(clerkMiddleware({
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY || "pk_test_Z3VpZGluZy10dXJ0bGUtNzQ5OS5jbGVyay5hY2NvdW50cy5kZXYk",
+  secretKey: process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q",
+}));
 const allowedSocketOrigins = [
   (process.env.FRONTEND_URL || "https://poster-a.vercel.app"),
   ...(process.env.CORS_ORIGINS || "").split(","),
