@@ -27,11 +27,35 @@ const httpServer = createServer(app)
 // إعداد الـ Middlewares
 app.use(express.json());
 app.use(cors());
+app.use(async (_req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("Request could not connect to the database:", error.message);
+    res.status(503).json({
+      success: false,
+      message: "Database is temporarily unavailable",
+    });
+  }
+});
 app.use(clerkMiddleware());
-//wensocket setup
+const allowedSocketOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.CORS_ORIGINS || "").split(","),
+  "http://localhost:5173",
+]
+  .map((origin) => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://poster-kgh5.vercel.app",
+    origin: (origin, callback) => {
+      if (!origin || allowedSocketOrigins.includes(origin.replace(/\/$/, ""))) {
+        return callback(null, true);
+      }
+      return callback(new Error("Origin is not allowed to connect"));
+    },
     methods: ["GET", "POST"],
   },
 });
@@ -39,6 +63,7 @@ setGroupSocketServer(io);
 
 io.use(async (socket, next) => {
   try {
+    await connectDB();
     const token = socket.handshake.auth?.token;
     if (!token || !process.env.CLERK_SECRET_KEY) {
       return next(new Error("Authentication required"));
@@ -199,8 +224,7 @@ const startServer = async () => {
   }
 };
 
-if (process.env.NODE_ENV !== "production") {
-  startServer();
-}
+// تشغيل السيرفر مباشرة
+startServer();
 
-export default app;
+export default httpServer;
