@@ -1,26 +1,25 @@
 import fs from "fs"
 import imagekit from "../configs/imagekit.js"
 import Message from "../models/Message.js"
+import {
+    addEventStreamClient,
+    removeEventStreamClient,
+    sendEventToUser,
+} from "../utils/eventStream.js";
 
-const connections = {}
+export const sseController = (req, res) => {
+    const { userId } = req.params;
 
-export const sseController = (req,res)=>{
-    const {userId} = req.params
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
 
-    //Set SSE headers
-    res.setHeader("Content-Type" , "text/even/stream")
-    res.setHeader("Cache-Cotrol" , "no-cache")
-    res.setHeader("Connection" , "keep-alive")
-    res.setHeader("Access-Cotrol-Allow-Origin" , "*")
-
-    connections[userId] = res
-    res.write("log: Connected to SSE stream\n\n")
-    res.on("close" , ()=>{
-        delete connections[userId]
-        console.log("Client disconnected");
-        
-    })
-
+    addEventStreamClient(userId, res);
+    res.write(": Connected to SSE stream\n\n");
+    res.on("close", () => {
+        removeEventStreamClient(userId, res);
+    });
 }
 //Send Message
 export const sendMessage = async(req,res)=>{
@@ -56,6 +55,9 @@ export const sendMessage = async(req,res)=>{
         message_type,
         media_url
     })
+
+    sendEventToUser(to_user_id, { type: "message", message });
+
     res.json({success:true , message})
 }catch(error){
     console.log(error);
@@ -101,4 +103,3 @@ export const getUserRecentMessages = async(req,res)=>{
     res.json({success:false , message:error.message})
     }
 }
-

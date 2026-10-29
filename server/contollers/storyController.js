@@ -1,18 +1,32 @@
-import fs from "fs";
+﻿import fs from "fs";
 import Story from "../models/Story.js";
-import User from "../models/User.js";
 import { getAuth } from "@clerk/express";
 
 import { inngest } from "../inngest/index.js";
 import imagekit from "../configs/imagekit.js";
+import { getOrCreateUser } from "../utils/user.js";
 
 export const addUserStory = async (req, res) => {
   try {
-    const { userId } = req.auth();
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    await getOrCreateUser(userId);
+
     const { content, media_type, background_color } = req.body;
-    let media = req.file;
+    const media = req.file;
     let media_url = "";
+
     if (media_type === "image" || media_type === "video") {
+      if (!media) {
+        return res.status(400).json({
+          success: false,
+          message: "Story media file is required",
+        });
+      }
+
       const fileBuffer = fs.readFileSync(media.path);
       const response = await imagekit.upload({
         file: fileBuffer,
@@ -20,7 +34,7 @@ export const addUserStory = async (req, res) => {
       });
       media_url = response.url;
     }
-    //create story
+
     const story = await Story.create({
       user: userId,
       content,
@@ -28,32 +42,42 @@ export const addUserStory = async (req, res) => {
       media_type,
       background_color,
     });
+
     await inngest.send({
       name: "app/story.delete",
       data: { storyId: story._id },
     });
-    res.json({ success: true });
+
+    return res.json({ success: true });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error("Error creating story:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//Get User Stories
+export const getStories = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
-export const getStories = async(req,res)=>{
-    try{
-        const {userId} = getAuth(req)
-        const user = await User.findById(userId)
-        const userIds = [userId , ...(user.connections || []), ...(user.following || [])]
+    const user = await getOrCreateUser(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
-        const stories = await Story.find({
-            user:{$in:userIds}
-        }).populate("user").sort({createdAt:-1})
-        res.json({success:true , stories})
+    const connections = Array.isArray(user.connections) ? user.connections : [];
+    const following = Array.isArray(user.following) ? user.following : [];
+    const userIds = [String(user._id), ...connections.map(String), ...following.map(String)];
 
-    }catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    const stories = await Story.find({ user: { $in: userIds } })
+      .populate("user")
+      .sort({ createdAt: -1 });
+
+    return res.json({ success: true, stories });
+  } catch (error) {
+    console.error("Error fetching stories:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
-}
+};

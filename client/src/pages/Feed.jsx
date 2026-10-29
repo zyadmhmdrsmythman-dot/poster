@@ -46,11 +46,26 @@ function Feed() {
   }
 }, [isLoaded, isSignedIn, fetchFeeds]);
 
+  useEffect(() => {
+    const handlePostCreated = (event) => {
+      const post = event.detail;
+      if (!post?._id) return;
+
+      setFeeds((currentFeeds) => [
+        post,
+        ...currentFeeds.filter((feed) => feed._id !== post._id),
+      ]);
+    };
+
+    window.addEventListener("post-created", handlePostCreated);
+    return () => window.removeEventListener("post-created", handlePostCreated);
+  }, []);
+
   return !loading ? (
-    <div className="h-full overflow-y-scroll no-scrollbar py-10 xl:pr-5 flex flex-col items-center bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white relative">
-      <div className="w-[90%] flex justify-between items-center p-4 absolute top-1 z-50 right-4 rounded-3xl">
-        <img src={logo} alt="" className="h-10 mr-3 hidden sm:block animate-pulse" />
-        <div className="flex-1 mx-4 sm:ml-6 max-w-md">
+    <div className="relative flex min-h-[calc(100dvh-3.5rem)] w-full flex-col items-center overflow-x-hidden bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] py-4 text-white sm:min-h-screen sm:py-10">
+      <div className="z-10 flex w-full max-w-5xl items-center justify-between gap-2 rounded-3xl px-3 py-2 sm:gap-4 sm:px-4">
+        <img src={logo} alt="Poster" className="mr-1 hidden h-10 shrink-0 animate-pulse sm:block sm:mr-3" />
+        <div className="mx-1 max-w-md flex-1 sm:mx-4 sm:ml-6">
           <input
             type="text"
             placeholder="Search..."
@@ -66,10 +81,10 @@ function Feed() {
         </div>
       </div>
 
-      <div className="flex items-start justify-center xl:gap-8 w-full mt-20">
-        <div className="w-full max-w-2xl">
+      <div className="mt-4 flex w-full items-start justify-center gap-4 px-2 sm:px-4 xl:gap-8">
+        <div className="w-full min-w-0 max-w-2xl">
           <StoriesBar />
-          <div className="p-4 space-y-6">
+          <div className="space-y-6 p-4 pb-32">
             {/* PostCards */}
             {feeds.map((post)=>(
               <PostCard key={post._id} post={post} className="bg-white/5 backdrop-blur-lg
@@ -79,7 +94,7 @@ function Feed() {
           </div>
         </div>
         {/* الرسائل الجانبية */}
-        <div className="max-xl:hidden sticky top-2">
+        <div className="sticky top-2 hidden w-72 shrink-0 xl:block">
         <RecentMessages />
         </div>
       </div>

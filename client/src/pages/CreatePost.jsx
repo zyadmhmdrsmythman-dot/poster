@@ -51,7 +51,7 @@ const CreatePost = () => {
       className="min-h-screen bg-linear-to-br from-[#0b0f3b] via-[#1a1f7f] to-[#3c1f7f]
       text-white"
     >
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <div className="mb-8 text-center">
           <h1
             className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r
@@ -64,20 +64,19 @@ const CreatePost = () => {
           </p>
         </div>
         <div
-          className="max-w-xl mx-auto bg-white/10 backdrop-blur-lg rounded-2xl 
-        shadow-[0_0_25px_rgba(131,58,180,0.5)] p-6 space-y-4 border border-purple-500/40"
+          className="mx-auto max-w-xl space-y-4 rounded-2xl border border-purple-500/40 bg-white/10 p-4 shadow-[0_0_25px_rgba(131,58,180,0.5)] backdrop-blur-lg sm:p-6"
         >
           <div className="flex items-center gap-3">
             <img
-              src={user.profile_picture}
+              src={user?.profile_picture}
               className="w-12 h-12 rounded-full border-purple-500
             shadow-[0_0_10px_rgba(255,0,255,0.3)]"
             />
             <div>
               <h2 className="font-semibold text-purple-200">
-                {user.full_name}
+                {user?.full_name || ""}
               </h2>
-              <p className="text-gray-400 text-sm">@{user.username}</p>
+              <p className="text-gray-400 text-sm">@{user?.username || ""}</p>
             </div>
           </div>
           <textarea
@@ -111,7 +110,7 @@ const CreatePost = () => {
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between p-3 border-t border-purple-500/30">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-purple-500/30 p-2 sm:p-3">
             <label
               htmlFor="images"
               className="flex items-center gap-2 text-sm text-gray-50
@@ -139,7 +138,7 @@ const CreatePost = () => {
               disabled={loading}
               className="text-sm bg-linear-to-r from-indigo-500 to-purple-600
             hover:from-indigo-600 hover:to-purple-700 active: scale-95 transition text-white
-            font-medium px-8 py-2 rounded-xl shadow-[0_0_15px_rgba(131,58,180,0.5)]
+            font-medium px-5 py-2 rounded-xl shadow-[0_0_15px_rgba(131,58,180,0.5)] sm:px-8
             hover:shadow-[0_0_25px_rgba(255,0,255, 0.8) ] "
             >
               Publish Post

@@ -12,7 +12,10 @@ const userSchema = new mongoose.Schema({
     following:[{type:String, ref:"User"}],
     connections:[{type:String, ref:"User"}],
     location:{type:String, default:""},
-    blockedUsers: [{type:String , ref: "User"}]
+    blockedUsers: [{type:String , ref: "User"}],
+    isSuspended:{type:Boolean, default:false},
+    suspendedAt:{type:Date, default:null},
+    isPlatformAdmin:{type:Boolean, default:false}
 
     
 },  {timestamps:true, minimize:false})

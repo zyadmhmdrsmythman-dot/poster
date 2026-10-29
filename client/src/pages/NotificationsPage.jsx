@@ -62,7 +62,7 @@ const NotificationsPage = () => {
       : notifications.filter((n) => n.type === activeTab);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white p-4 relative">
+    <div className="min-h-screen bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white p-4 relative">
       {/* Header */}
       <div className="max-w-2xl mx-auto sticky top-0 z-20 backdrop-blur-lg bg-[#182034]/80 rounded-xl p-3 flex items-center gap-3 shadow-lg border border-purple-500/30 mb-6">
         <Bell className="w-6 h-6 text-purple-400" />
@@ -70,7 +70,7 @@ const NotificationsPage = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-4 justify-center mb-6">
+      <div className="mb-6 flex flex-wrap justify-center gap-2 sm:gap-4">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -126,7 +126,7 @@ const NotificationsPage = () => {
                     <p className="text-white text-sm leading-relaxed">
                       <span className="font-semibold text-purple-200 mr-1.5">
                         {user.full_name}
-                      </span>
+                      </span> {" "}
                       {n.type === "like" && "liked your post"}
                       {n.type === "comment" && "commented on your post"}
                       {n.type === "media" && "shared media with you"}

@@ -2,64 +2,61 @@ import imageKit from "../configs/imagekit.js";
 
 import User from "../models/User.js";
 import fs from "fs";
-
-import Connection from "../models/connections.js";
-
-//get user data using userId
+import Connection from "../models/connections.js"; // تأكد من اسم الملف تماماً
+import { inngest } from "../inngest/index.js";
 import { getAuth } from "@clerk/express";
-import Post from "../models/Post.js"
+import Post from "../models/Post.js";
+import { getOrCreateUser } from "../utils/user.js";
 
+// Clerk user IDs are stored directly as the User document's string _id.
+const findUserSafe = async (id) => {
+  if (!id) return null;
+  return User.findById(String(id));
+};
+
+// ==================== GET USER DATA ====================
 export const getUserData = async (req, res) => {
   try {
-    // 1. استخراج الـ userId بالطريقة المعتمدة من Clerk
     const { userId } = getAuth(req);
 
-    console.log("--> Authenticated userId:", userId);
-
     if (!userId) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Unauthorized: No User ID found in token",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: No User ID found in token",
+      });
     }
 
-    // 2. البحث عن المستخدم بالمعرف النصي الصريح
-    const user = await User.findById(userId);
+    const user = await getOrCreateUser(userId);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User Not Found in Database" });
+      throw new Error("Unable to create or load the user profile");
     }
 
-    // 3. إرجاع بيانات المستخدم بنجاح
-    res.status(200).json({ success: true, user });
+    return res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("Error in getUserData:", error.message);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//update user data
-
+// ==================== UPDATE USER DATA ====================
 export const updateUserData = async (req, res) => {
   try {
     const { userId } = getAuth(req);
     let { username, bio, location, full_name } = req.body;
 
-    const tempUser = await User.findById(userId);
+    const tempUser = await findUserSafe(userId);
     if (!tempUser) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
 
-    !username && (username = tempUser.username);
-    if (tempUser.username !== username) {
-      const user = await User.findOne({ username });
-      if (user) {
+    if (!username) {
+      username = tempUser.username;
+    } else if (tempUser.username !== username) {
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
         username = tempUser.username;
       }
     }
@@ -110,295 +107,509 @@ export const updateUserData = async (req, res) => {
       fs.unlinkSync(cover.path);
     }
 
-    const user = await User.findByIdAndUpdate(userId, updatedData, {
-      returnDocument: "after", //{ new: true } أصبح قديماً ويجب استبداله بـ { returnDocument: 'after' }
-    });
+    const updatedUser = await User.findByIdAndUpdate(
+      tempUser._id,
+      updatedData,
+      { returnDocument: "after" }
+    );
 
-    res.json({ success: true, user, message: "Profile update successfully" });
+    return res.json({
+      success: true,
+      user: updatedUser,
+      message: "Profile updated successfully",
+    });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+    console.error("updateUserData error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//find users using username , email , location , name
+// ==================== DISCOVER USERS ====================
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
 
-export const discoverUsers = async (res, req) => {
+export const discoverUsers = async (req, res) => {
   try {
     const { userId } = getAuth(req);
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
     const { input } = req.body;
-    const currentUser = await User.findById(userId).select("blockUsers");
-    const blockdByMe = currentUser?.blockedUsers?.map(String) || [];
 
-    const excludedIds = [...blockdByMe, userId];
+    const currentUser = await findUserSafe(userId);
+    const currentMongoId = currentUser ? String(currentUser._id) : null;
 
-    const users = await User.find({
-      $and: [
-        {
-          $or: [
-            { username: new RegExp(input, "i") },
-            { email: new RegExp(input, "i") },
-            { full_name: new RegExp(input, "i") },
-            { location: new RegExp(input, "i") },
-          ],
-        },
-        {
-          _id: { $nin: excludedIds },
-        },
-      ],
-    }).select("_id full_name username profile_picture bio location");
-    res.json({ success: true, users });
+    const blockedByMe = currentUser?.blockedUsers?.map(String) || [];
+
+    const usersWhoBlockedMe = await User.find({
+      blockedUsers: { $in: [currentMongoId, userId].filter(Boolean) },
+    }).distinct("_id");
+
+    const blockedByOthers = usersWhoBlockedMe.map(String);
+
+    const excludedIds = Array.from(
+      new Set(
+        [
+          ...blockedByMe,
+          ...blockedByOthers,
+          currentMongoId,
+          String(userId),
+        ].filter(Boolean)
+      )
+    );
+
+    const filter = {
+      _id: { $nin: excludedIds },
+    };
+
+    if (typeof input === "string" && input.trim()) {
+      const safePattern = new RegExp(escapeRegex(input.trim()), "i");
+      filter.$or = [
+        { username: safePattern },
+        { email: safePattern },
+        { full_name: safePattern },
+        { location: safePattern },
+      ];
+    }
+
+    const users = await User.find(filter)
+      .select("_id full_name username profile_picture bio location")
+      .limit(20)
+      .lean();
+
+    return res.json({ success: true, users });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+    console.error("Discover users error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//Follow User
-
+// ==================== FOLLOW USER ====================
 export const followUser = async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const { id } = req.body;
-    const user = await User.findById(userId);
-    if (user.following.includes(id)) {
-      return res.json({
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const currentUser = await findUserSafe(userId);
+    const targetUser = await findUserSafe(id);
+
+    if (!currentUser || !targetUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    if (String(currentUser._id) === String(targetUser._id)) {
+      return res.status(400).json({
         success: false,
-        message: "You Already Following This User",
+        message: "You cannot follow yourself",
       });
     }
-    user.following.push(id);
-    await user.save();
 
-    const toUser = await User.findById(id);
-    toUser.followers.push(userId);
-    await toUser.save();
-    res.json({ success: true, message: "Now You Are Following This User" });
+    const isFollowing = currentUser.following.some(
+      (uid) => String(uid) === String(targetUser._id)
+    );
+
+    if (isFollowing) {
+      return res.status(400).json({
+        success: false,
+        message: "You are already following this user",
+      });
+    }
+
+    currentUser.following.push(targetUser._id);
+    targetUser.followers.push(currentUser._id);
+
+    await currentUser.save();
+    await targetUser.save();
+
+    return res.json({
+      success: true,
+      message: "Now you are following this user",
+    });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+    console.error("followUser error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//Unfollow User
-
+// ==================== UNFOLLOW USER ====================
 export const unfollowUser = async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const { id } = req.body;
-    const user = await User.findById(userId);
-    user.following = user.following.filter((user) => user !== id);
-    await user.save();
 
-    const toUser = await User.findById(id);
-    toUser.followers = toUser.followers.filter((user) => user !== userId);
-    await toUser.save();
-    res.json({
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const currentUser = await findUserSafe(userId);
+    const targetUser = await findUserSafe(id);
+
+    if (!currentUser || !targetUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    currentUser.following = currentUser.following.filter(
+      (uid) => String(uid) !== String(targetUser._id)
+    );
+    targetUser.followers = targetUser.followers.filter(
+      (uid) => String(uid) !== String(currentUser._id)
+    );
+
+    await currentUser.save();
+    await targetUser.save();
+
+    return res.json({
       success: true,
-      message: "You Are No Longer Following This User",
+      message: "You are no longer following this user",
     });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+    console.error("unfollowUser error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//  send connection request
-
-export const sendConnctionRequest = async (req, res) => {
+// ==================== SEND CONNECTION REQUEST ====================
+export const sendConnectionRequest = async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const { id } = req.body;
-    const last24Hourse = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const connectionRequests = await Connection.find({
-      from_user_id: userId,
-      created_at: { $gt: last24Hourse },
-    });
-    if (connectionRequests.length >= 20) {
-      return res.json({
+    const { id: recipientId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const sender = await findUserSafe(userId);
+    const recipient = await findUserSafe(recipientId);
+
+    if (!recipient || !sender) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Recipient user not found" });
+    }
+
+    if (String(sender._id) === String(recipient._id)) {
+      return res.status(400).json({
         success: false,
-        message: "You Have Send than 20 connection in the last 24 hourse",
+        message: "You cannot send a connection request to yourself",
       });
     }
-    const connection = await Connection.findOne({
+
+    const senderId = String(sender._id);
+    const targetId = String(recipient._id);
+
+    const existingConnection = await Connection.findOne({
       $or: [
-        { from_user_id: userId, to_user_id: id },
-        { from_user_id: userId, to_user_id: id },
+        { from_user_id: senderId, to_user_id: targetId },
+        { from_user_id: targetId, to_user_id: senderId },
       ],
     });
-    if (!connection) {
-      const newConnection = await Connection.create({
-        from_user_id: userId,
-        to_user_id: id,
-      });
-      await inngest.send({
-        name: "app/connection-request",
-        data: { connectionId: newConnection._id },
-      });
-      return res.json({
-        success: true,
-        message: "Connection request send successfully",
-      });
-    } else if (connection && connection.status === "accepted") {
-      return res.json({
+
+    if (existingConnection) {
+      if (existingConnection.status === "accepted") {
+        return res.status(400).json({
+          success: false,
+          message: "You are already connected with this user",
+        });
+      }
+      return res.status(400).json({
         success: false,
-        message:
-          "You have sent then 20 connection requests in the last 24 hours",
+        message: "Connection request pending",
       });
     }
-    return res.json({ success: false, message: "Connection request pending" });
-  } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
-  }
-};
 
-//get user connections
+    await Connection.create({
+      from_user_id: senderId,
+      to_user_id: targetId,
+      status: "pending",
+    });
 
-export const getUserConnections = async (req, res) => {
-  try {
-    const { userId } = req.auth();
-    const user = await User.findById(userId).populate(
-      "connections followers following",
-    );
-    const connections = user.connections;
-    const followers = user.followers;
-    const following = following;
-    const pendingConnections = (
-      await Connection.find({ to_user_id: userId, status: "pending" }).populate(
-        "from_user_id",
-      )
-    ).map((connection) => connection.from_user_id);
-    res.json({
+    return res.json({
       success: true,
-      connections,
-      followers,
-      following,
-      pendingConnections,
+      message: "Connection request sent successfully",
     });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+    console.error("sendConnectionRequest error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//Accept Connection Request
-
-export const acceptConnectionRequest = async (req,res) =>{
-  try{
-    const {userId} = req.auth()
-    const {id} = req.body
-    const connection = await Connection.findOne({from_user_id:userId})
-    if(!connection){
-      return res.json({success:false , message: "connection ton found"})
-    }
-    const user = await User.findById(userId)
-    user.connections.push(id)
-    await user.save()
-    const toUser = await User.findById(id)
-    await toUser.save()
-
-    connection.status = "accepted"
-    await connection.save()
-    res.json({success:true , message:"connection accepted successfully"})
-
-  }catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
-  }
-}
-
-//========== GET PROFILE =============
-export const getUserProfile = async (req, res) => {
+// ==================== GET USER CONNECTIONS ====================
+export const getUserConnections = async (req, res) => {
   try {
-    const { profileId } = req.body;
-    if (!profileId) {
-      return res.json({ success: false, message: "profileId is required" });
+    const { userId } = getAuth(req);
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
-    const profileDoc = await User.findById(profileId).select(
-      "_id full_name username profile_picture cover_photo bio location blockedUsers"
+    const user = await findUserSafe(userId);
+    const targetIds = user?._id ? [String(user._id)] : [String(userId)];
+
+    // 1. المتابعون والذين أتابعهم
+    const followingList = await User.find({
+      _id: { $in: user?.following || [] },
+    }).select("_id full_name username profile_picture bio location");
+
+    const followersList = await User.find({
+      _id: { $in: user?.followers || [] },
+    }).select("_id full_name username profile_picture bio location");
+
+    // 2. الطلبات المعلقة الواردة (Pending)
+    const pendingDocs = await Connection.find({
+      to_user_id: { $in: targetIds },
+      status: "pending",
+    });
+
+    const pendingSenderIds = pendingDocs.map((c) => c.from_user_id);
+
+    const pendingList = await User.find({ _id: { $in: pendingSenderIds } }).select(
+      "_id full_name username profile_picture bio location"
     );
 
+    const sentRequestDocs = await Connection.find({
+      from_user_id: { $in: targetIds },
+      status: "pending",
+    });
+    const sentRecipientIds = sentRequestDocs.map((connection) => connection.to_user_id);
+    const sentConnections = await User.find({
+      _id: { $in: sentRecipientIds },
+    }).select("_id full_name username profile_picture bio location");
+
+    // 3. الاتصالات المقبولة (Connections)
+    const acceptedDocs = await Connection.find({
+      $or: [
+        { from_user_id: { $in: targetIds }, status: "accepted" },
+        { to_user_id: { $in: targetIds }, status: "accepted" },
+      ],
+    });
+
+    const connectedUserIds = acceptedDocs.map((c) =>
+      targetIds.includes(c.from_user_id) ? c.to_user_id : c.from_user_id
+    );
+
+    const connectionsList = await User.find({
+      _id: { $in: connectedUserIds },
+    }).select("_id full_name username profile_picture bio location");
+
+    return res.json({
+      success: true,
+      connections: connectionsList,
+      followers: followersList,
+      following: followingList,
+      pendingConnections: pendingList,
+      sentConnections,
+    });
+  } catch (error) {
+    console.error("getUserConnections error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==================== ACCEPT CONNECTION REQUEST ====================
+export const acceptConnectionRequest = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const { id: senderId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const currentUser = await findUserSafe(userId);
+    const senderUser = await findUserSafe(senderId);
+
+    if (!currentUser || !senderUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const myIds = [String(currentUser._id)];
+    const theirIds = [String(senderUser._id)];
+
+    // البحث عن الطلب المعلق الموجه لي
+    const connection = await Connection.findOne({
+      from_user_id: { $in: theirIds },
+      to_user_id: { $in: myIds },
+      status: "pending",
+    });
+
+    if (!connection) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Connection request not found" });
+    }
+
+    // تحديث حالة الطلب
+    connection.status = "accepted";
+    await connection.save();
+
+    // ربط الحسابين في مصفوفة connections لكل منهما
+    if (!currentUser.connections.some((id) => String(id) === String(senderUser._id))) {
+      currentUser.connections.push(senderUser._id);
+      await currentUser.save();
+    }
+
+    if (!senderUser.connections.some((id) => String(id) === String(currentUser._id))) {
+      senderUser.connections.push(currentUser._id);
+      await senderUser.save();
+    }
+
+    return res.json({
+      success: true,
+      message: "Connection accepted successfully",
+    });
+  } catch (error) {
+    console.error("acceptConnectionRequest error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==================== GET PROFILE ====================
+export const getUserProfile = async (req, res) => {
+  try {
+    // استخراج الـ ID بأي طريقة ممكنة سواء params أو body أو query
+    const profileId =
+      req.params?.userId ||
+      req.body?.profileId ||
+      req.query?.profileId ||
+      req.body?.id;
+
+    if (!profileId) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile ID is required",
+      });
+    }
+
+    // البحث الآمن عن المستخدم المطلوب بروفايله
+    const profileDoc = await findUserSafe(profileId);
+
     if (!profileDoc) {
-      return res.json({ success: false, message: "profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
     }
 
     const profile = profileDoc.toObject();
 
-    // جلب معرف المستخدم الحالي عبر getAuth(req)
+    // جلب المستخدم الحالي للتحقق من الحظر
     const { userId } = getAuth(req);
-    const currentUser = await User.findById(userId).select("blockedUsers");
+    const currentUser = userId ? await findUserSafe(userId) : null;
 
     const isBlocked = Boolean(
-      currentUser?.blockedUsers?.some((id) => String(id) === String(profile._id)) ||
-      profile?.blockedUsers?.some((id) => String(id) === String(userId))
+      currentUser?.blockedUsers?.some(
+        (id) => String(id) === String(profile._id)
+      ) ||
+      profile?.blockedUsers?.some(
+        (id) => String(id) === String(currentUser?._id || userId)
+      )
     );
 
     let posts = [];
     if (!isBlocked) {
-      posts = await Post.find({ user: profileId })
+      posts = await Post.find({ user: profileDoc._id })
         .sort({ createdAt: -1 })
         .populate("user", "_id full_name username profile_picture");
     }
 
     delete profile.blockedUsers;
 
-    // الرد يتم إرساله دائماً سواء كان المستخدم محظوراً أم لا
-    return res.json({
+    return res.status(200).json({
       success: true,
       profile,
       posts,
       isBlocked,
     });
   } catch (error) {
-    console.error(error);
-    return res.json({ success: false, message: error.message });
+    console.error("getUserProfile error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ============== BLOCK USER ==========
+// ==================== BLOCK USER ====================
+export const blockUser = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const { userIdToBlock } = req.body;
 
-export const blockUser = async(req,res)=>{
-    try{
-        const {userId} = req.auth()
-        const {userIdToBlock} = req.body
-        const currentUser = await User.findById(userId)
-        if(!currentUser.blockedUsers.includes(userIdToBlock)){
-            currentUser.blockedUsers.push(userIdToBlock)
-            await currentUser.save()
-        }
-        return res.json({
-            success:true,
-            message:"User blocked successfully",
-            blockedUsers:currentUser.blockedUsers,
-        })
-
-    }catch(error){
-    console.log(error);
-    res.json({success:false , message:error.message})
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-}
 
-//============ Unblock User ==============
+    const currentUser = await findUserSafe(userId);
+    const targetUser = await findUserSafe(userIdToBlock);
 
-export const unblockUser = async(req,res)=>{
-    try{
-        const {userId} = req.auth()
-        const {userIdToUnblock} = req.body
-        const currentUser = await User.findById(userId)
-        currentUser.blockedUsers = currentUser.blockedUsers.filter(
-            (id) => String(id) !== String(userIdToUnblock)
-        );
-        await currentUser.save()
-        return res.json({
-            success:true,
-            message:"User unblocked successfully",
-            blockedUsers:currentUser.blockedUsers,
-        })
-
-    }catch(error){
-    console.log(error);
-    res.json({success:false , message:error.message})
+    if (!currentUser || !targetUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
-}
+
+    const targetMongoId = String(targetUser._id);
+
+    if (!currentUser.blockedUsers.some((id) => String(id) === targetMongoId)) {
+      currentUser.blockedUsers.push(targetUser._id);
+      await currentUser.save();
+    }
+
+    return res.json({
+      success: true,
+      message: "User blocked successfully",
+      blockedUsers: currentUser.blockedUsers,
+    });
+  } catch (error) {
+    console.error("blockUser error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==================== UNBLOCK USER ====================
+export const unblockUser = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const { userIdToUnblock } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const currentUser = await findUserSafe(userId);
+    const targetUser = await findUserSafe(userIdToUnblock);
+
+    if (!currentUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const targetMongoId = targetUser ? String(targetUser._id) : String(userIdToUnblock);
+
+    currentUser.blockedUsers = currentUser.blockedUsers.filter(
+      (id) => String(id) !== targetMongoId && String(id) !== String(userIdToUnblock)
+    );
+
+    await currentUser.save();
+
+    return res.json({
+      success: true,
+      message: "User unblocked successfully",
+      blockedUsers: currentUser.blockedUsers,
+    });
+  } catch (error) {
+    console.error("unblockUser error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

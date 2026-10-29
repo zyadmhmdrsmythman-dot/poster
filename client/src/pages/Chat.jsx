@@ -1,82 +1,146 @@
-import { useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { ImageIcon, SendHorizonal } from "lucide-react";
 import { motion } from "framer-motion";
-
-const currentUser = {
-  _id: "1",
-  username: "myuser",
-  full_name: "My Name",
-  profile_picture: "https://i.pravatar.cc/407?img=1",
-};
-
-const user = {
-  _id: "2",
-  username: "friend",
-  full_name: "Friend Name",
-  profile_picture: "https://i.pravatar.cc/407?img=2",
-};
-
-const connections = [user];
-
-const initialMessages = [
-  {
-    id: "m1",
-    from_user_id: "2",
-    text: "مرحبا!",
-    message_type: "text",
-    createdAt: "2026-09-13T10:00:00Z",
-  },
-  {
-    id: "m2",
-    from_user_id: "1",
-    text: "اهلا👋",
-    message_type: "text",
-    createdAt: "2026-09-13T10:01:00Z",
-  },
-  {
-    id: "m3",
-    from_user_id: "2",
-    text: "كيف حالك ؟",
-    message_type: "text",
-    createdAt: "2026-09-13T10:02:00Z",
-  },
-];
+import { useDispatch, useSelector } from "react-redux";
+import { useParams } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios.js";
+import toast from "react-hot-toast";
+import {
+  addMessages,
+  resetMessages,
+  fetchMessages,
+} from "../features/messages/messsagesSlice.js";
 
 const Chat = () => {
   const [text, setText] = useState("");
   const [image, setImage] = useState(null);
-  const [localMessages, setLocalMessages] = useState(initialMessages);
-  const messageEndRef = useRef(null);
-  const isBlockedByUser = true;
+  const [user, setUser] = useState(null);
+  const connections = useSelector((state) => state.connections?.connections || []);
+  const currentUser = useSelector((state) => state.user?.value);
+  const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+  const dispatch = useDispatch();
+  const { messages } = useSelector((state) => state.messages || { messages: [] });
+  const { userId } = useParams();
+  const { getToken } = useAuth();
+  const messagesEndRef = useRef(null);
 
-  const sendMessage = () => {
-    if (!text.trim() && !image) return;
+  const fetchUserData = async () => {
+    if (!userId) return;
 
-    const newMessage = {
-      id: Date.now().toString(),
-      from_user_id: currentUser._id,
-      text: text.trim(),
-      message_type: image ? "image" : "text",
-      media_url: image ? URL.createObjectURL(image) : null,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const token = await getToken();
+      const { data } = await api.post(
+        "/api/user/profiles",
+        { profileId: userId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    setLocalMessages((prev) => [...prev, newMessage]);
-    setText("");
-    setImage(null);
-
-    setTimeout(() => {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
+      if (data.success) {
+        setUser({
+          ...(data.profile || {}),
+          blockedUsers: data.profile?.blockedUsers || [],
+        });
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to load user data"
+      );
+    }
   };
 
+  const fetchUserMessages = async () => {
+    if (!userId) return;
+
+    try {
+      const token = await getToken();
+      dispatch(fetchMessages({ token, userId }));
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to load messages"
+      );
+    }
+  };
+
+  const sendMessage = async () => {
+    try {
+      if (!user || !currentUserId || !userId) return;
+
+      if (user.blockedUsers?.some((id) => String(id) === currentUserId)) {
+        toast.error("هذا المستخدم قام بحظرك");
+        return;
+      }
+
+      if (!text.trim() && !image) return;
+
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append("to_user_id", userId);
+      formData.append("text", text.trim());
+      if (image) formData.append("image", image);
+
+      const { data } = await api.post("/api/message/send", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setText("");
+        setImage(null);
+        dispatch(addMessages(data.message));
+      } else {
+        throw new Error(data.message || "Failed to send message");
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to send message"
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+    fetchUserMessages();
+    return () => dispatch(resetMessages());
+  }, [userId, getToken, dispatch]);
+
+  useEffect(() => {
+    if (connections.length > 0 && userId) {
+      const matchedUser = connections.find(
+        (connection) => String(connection._id) === String(userId)
+      );
+
+      if (matchedUser) {
+        setUser((prev) => ({
+          ...(prev || {}),
+          ...matchedUser,
+          blockedUsers: prev?.blockedUsers || matchedUser.blockedUsers || [],
+        }));
+      }
+    }
+  }, [connections, userId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  if (!user || !currentUserId) return null;
+
+  const isBlockedByUser = user.blockedUsers?.some(
+    (id) => String(id) === currentUserId
+  );
+
   return (
-    <div className="flex flex-col h-screen bg-linear-to-br from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white overflow-hidden relative">
-      {/* Header */}
-      <div className="flex ml-16 items-center gap-3 p-3 md:px-10 bg-white/5 backdrop-blur-lg border-b border-purple-500/30 shadow-[0_0_15px_rgba(131,58,180,0.3)] z-10">
+    <div className="relative flex h-[calc(100dvh-3.5rem)] min-h-[420px] flex-col overflow-hidden bg-linear-to-br from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white sm:h-screen">
+      <div className="z-10 flex items-center gap-3 border-b border-purple-500/30 bg-white/5 p-3 shadow-[0_0_15px_rgba(131,58,180,0.3)] backdrop-blur-lg sm:px-6 md:px-10">
         <img
           src={user.profile_picture || ""}
-          alt={user.full_name}
+          alt={user.full_name || "User"}
           className="w-12 h-12 rounded-full border border-purple-300 shadow-[0_0_10px_rgba(255,0,255,0.5)]"
         />
         <div>
@@ -85,7 +149,6 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 p-4 md:px-10 overflow-y-scroll relative">
         {isBlockedByUser ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
@@ -99,27 +162,28 @@ const Chat = () => {
                 😣 لقد قام المستخدم بحظرك
               </p>
               <p className="text-purple-200 text-lg">
-                للأسف لا يمكنك مراسلته , ربما في المستقبل سيكون هناك فرصة للتواصل
-                💔😶‍🌫️
+                للأسف لا يمكنك مراسلته , ربما في المستقبل سيكون هناك فرصة
+                للتواصل 💔😶‍🌫️
               </p>
             </motion.div>
           </div>
         ) : (
           <div className="space-y-4 max-w-full mx-auto">
-            {localMessages
-              .toSorted(
-                (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-              )
+            {messages
+              .toSorted((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
               .map((message, index) => {
                 const isCurrentUser =
-                  message.from_user_id === currentUser._id;
+                  String(message.from_user_id) === currentUserId;
                 const sender = isCurrentUser
                   ? null
-                  : connections.find((c) => c._id === message.from_user_id);
+                  : connections.find(
+                      (connection) =>
+                        String(connection._id) === String(message.from_user_id)
+                    );
 
                 return (
                   <motion.div
-                    key={`${message.id}-${index}`}
+                    key={`${message.id || message._id || index}-${index}`}
                     initial={{ opacity: 0, x: isCurrentUser ? 100 : -100 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{
@@ -130,14 +194,14 @@ const Chat = () => {
                     className={`flex items-start gap-2 ${
                       isCurrentUser
                         ? "justify-end"
-                        : "justify-start ml-16 md:ml-24"
+                        : "justify-start ml-2 sm:ml-8 md:ml-16"
                     }`}
                   >
                     {!isCurrentUser && sender && (
                       <div className="flex flex-col items-center">
                         <img
                           src={sender.profile_picture || ""}
-                          alt={sender.full_name}
+                          alt={sender.full_name || "User"}
                           className="w-8 h-8 rounded-full border border-purple-500 shadow-[0_0_10px_rgba(255,0,255,0.5)]"
                         />
                       </div>
@@ -164,7 +228,7 @@ const Chat = () => {
                       <div className="flex flex-col items-center">
                         <img
                           src={currentUser?.profile_picture || ""}
-                          alt={currentUser.full_name}
+                          alt={currentUser?.full_name || "User"}
                           className="w-8 h-8 rounded-full border border-indigo-400 shadow-[0_0_10px_rgba(255,0,255,0.5)]"
                         />
                       </div>
@@ -172,21 +236,20 @@ const Chat = () => {
                   </motion.div>
                 );
               })}
-            <div ref={messageEndRef} />
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
-      {/* Input Box */}
       {!isBlockedByUser && (
-        <div className="px-4 pb-4">
-          <div className="flex items-center gap-3 px-5 py-2 bg-white/10 backdrop-blur-lg border border-purple-500/30 shadow-[0_0_15px_rgba(131,58,180,0.4)] rounded-full max-w-xl mx-auto">
+        <div className="px-2 pb-3 sm:px-4 sm:pb-4">
+          <div className="mx-auto flex max-w-xl items-center gap-2 rounded-2xl border border-purple-500/30 bg-white/10 px-3 py-2 shadow-[0_0_15px_rgba(131,58,180,0.4)] backdrop-blur-lg sm:gap-3 sm:rounded-full sm:px-5">
             <input
               type="text"
               className="flex-1 outline-none text-white bg-transparent placeholder-gray-400"
               placeholder="Type a message..."
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && sendMessage()}
+              onChange={(event) => setText(event.target.value)}
               value={text}
             />
             <label htmlFor="image" className="cursor-pointer">
@@ -204,8 +267,8 @@ const Chat = () => {
                 id="image"
                 accept="image/*"
                 hidden
-                onChange={(e) => {
-                  if (e.target.files?.[0]) setImage(e.target.files[0]);
+                onChange={(event) => {
+                  if (event.target.files?.[0]) setImage(event.target.files[0]);
                 }}
               />
             </label>

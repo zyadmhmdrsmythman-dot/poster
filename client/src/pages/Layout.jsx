@@ -9,15 +9,20 @@ const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return user ? (
-    <div className="w-full flex h-screen">
+    <div className="flex min-h-screen w-full">
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="flex-1 bg-slate-50">
+      <main className="min-w-0 flex-1 bg-slate-50 sm:ml-20">
         <Outlet />
-      </div>
-      {sidebarOpen ? <X className="absolute top-3 right-3 p-2 z-100 bg-white rounded-md shadow
-      w-10 h-10 text-gray-600 sm:hidden cursor-pointer" onClick={() => setSidebarOpen(false)} />
-      : <Menu className="absolute top-3 right-3 p-2 rounded-md shadow w-10 h-10 
-      cursor-pointer text-gray-600 sm:hidden" onClick={() => setSidebarOpen(true)} />}
+      </main>
+      <button
+        type="button"
+        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={sidebarOpen}
+        className="fixed right-3 top-2 z-50 grid h-10 w-10 place-items-center rounded-xl border border-purple-300/20 bg-[#111638]/95 text-white shadow-lg sm:hidden"
+        onClick={() => setSidebarOpen((open) => !open)}
+      >
+        {sidebarOpen ? <X size={21} /> : <Menu size={21} />}
+      </button>
     </div>
 
   ):(

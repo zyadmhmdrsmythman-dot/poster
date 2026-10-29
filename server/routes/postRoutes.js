@@ -3,7 +3,17 @@ import express from "express"
 import upload from "../configs/multer.js"
 
 import { protect } from "../middlewares/auth.js"
-import { addComment, addPost, deletePost, getFeedPosts, getSinglePost, getUserPost, linkPost, updatePost } 
+import {
+  addComment,
+  addPost,
+  deleteComment,
+  deletePost,
+  getFeedPosts,
+  getSinglePost,
+  getUserPost,
+  linkPost,
+  updatePost,
+}
 from "../contollers/posterController.js"
 
 const postRouter = express.Router()
@@ -21,5 +31,7 @@ postRouter.post("/user/:id" , getUserPost)
 
 postRouter.delete("/delete/:postId",protect, deletePost);
 postRouter.put("/update/:postId", protect, updatePost);
+
+postRouter.delete("/:postId/comment/:commentId", protect, deleteComment);
 
 export default postRouter;

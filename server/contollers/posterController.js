@@ -4,6 +4,7 @@ import fs from "fs";
 import Post from "../models/Post.js";
 import { getAuth } from "@clerk/express";
 import { createdNotifiction } from "./notificationController.js";
+import { broadcastEvent } from "../utils/eventStream.js";
 
 const getUserData = async (userId) => {
   return (
@@ -80,11 +81,13 @@ export const addPost = async (req, res) => {
       image_urls, // مطابق للـ Schema ومكون الـ PostCard
       post_type: finalPostType,
     });
+    const populatedPost = await populatePostData(post);
+    broadcastEvent({ type: "post", post: populatedPost });
 
     return res.json({
       success: true,
       message: "Post created successfully",
-      post,
+      post: populatedPost,
     });
   } catch (error) {
     console.error("Error in addPost:", error);
@@ -101,15 +104,13 @@ export const getFeedPosts = async (req, res) => {
     // جلب معرفات المستخدمين من البوستات
     const userIds = posts.map((p) => p.user);
 
-    // البحث عن المستخدمين المطابقين (سواء بـ _id أو clerk_id حسب حفظك في الـ User Schema)
-    const users = await User.find({
-      $or: [{ _id: { $in: userIds } }, { clerk_id: { $in: userIds } }],
-    }).select("full_name username profile_picture _id clerk_id");
+    const users = await User.find({ _id: { $in: userIds } }).select(
+      "full_name username profile_picture _id"
+    );
 
     const usersMap = new Map();
     users.forEach((u) => {
       usersMap.set(String(u._id), u);
-      if (u.clerk_id) usersMap.set(String(u.clerk_id), u);
     });
 
     // استبدال حقل user النصي بكائن المستخدم الكامل
@@ -127,7 +128,7 @@ export const getFeedPosts = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findOne({ clerkId: userId });
+    const user = await User.findById(userId);
     if (!user) {
       return res
         .status(404)
@@ -135,9 +136,10 @@ export const getUserById = async (req, res) => {
     }
     const posts = await Post.find({ user: user._id }).sort({ createdAt: -1 });
     const postsWithUserData = await Promise.all(posts.map(populatePostData));
+    return res.json({ success: true, posts: postsWithUserData });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -218,7 +220,7 @@ export const addComment = async (req, res) => {
     post.comments.push({ user: userId, text });
     await post.save();
     if (post.user !== userId) {
-      await createdNotification({
+      await createdNotifiction({
         userId: post.user,
         fromUserId: userId,
         type: "comment",
@@ -293,6 +295,57 @@ export const updatePost = async (req, res) => {
 
     return res.json({ success: true, message: "Post updated successfully", post });
   } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const { userId } = getAuth(req);
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    // البحث عن التعليق داخل مصفوفة التعليقات
+    const comment = post.comments.id(commentId) || post.comments.find(c => String(c._id) === String(commentId));
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    // التحقق من الصلاحية: هل المستخدم هو كاتب التعليق أو صاحب المنشور؟
+    const isCommentAuthor = String(comment.user?._id || comment.user) === String(userId);
+    const isPostAuthor = String(post.user?._id || post.user) === String(userId);
+
+    if (!isCommentAuthor && !isPostAuthor) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this comment",
+      });
+    }
+
+    // حذف التعليق من المصفوفة وحفظ التحديث
+    post.comments = post.comments.filter(c => String(c._id) !== String(commentId));
+    await post.save();
+
+    // إعادة جلب المنشور مع populate لعرض البيانات المحدثة مباشرة
+    const updatedPost = await Post.findById(postId)
+      .populate("user", "_id full_name username profile_picture")
+      .populate("comments.user", "_id full_name username profile_picture");
+
+    return res.json({
+      success: true,
+      message: "Comment deleted successfully",
+      post: updatedPost,
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

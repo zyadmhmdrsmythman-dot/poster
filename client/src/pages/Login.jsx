@@ -77,7 +77,7 @@ const Login = () => {
 
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 z-10">
         <motion.div
-          className="w-full max-w-md p-8 rounded-3xl bg-linear-to-br from-purple-700/20
+          className="w-full max-w-md rounded-3xl bg-linear-to-br from-purple-700/20 p-5 sm:p-8
           via-indigo-800/20 to-pink-700/20 backdrop-blur-md shadow-[0_0_30px_rgba(131,58,180,0.5)]"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}

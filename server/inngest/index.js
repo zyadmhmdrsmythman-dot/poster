@@ -168,9 +168,9 @@ const sendNotificationOfUnseenMessages = inngest.createFunction(
       "to_user_id",
     );
     const unseenCount = {};
-    messages.map((message) => {
-      unseenCount[message.to_user_id] =
-        (unseenCount[message.to_user_id] || 0) + 1;
+    messages.forEach((message) => {
+      const recipientId = String(message.to_user_id?._id || message.to_user_id);
+      unseenCount[recipientId] = (unseenCount[recipientId] || 0) + 1;
     });
     for (const userId in unseenCount) {
       const user = await User.findById(userId);

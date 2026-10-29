@@ -4,22 +4,53 @@ import Loading from "../components/Loading";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { input } from "framer-motion/client";
-import loading from "../components/Loading";
+import { useDispatch } from "react-redux";
+import api from "../api/axios";
+import { fetchUser } from "../features/user/userSlice.js";
+import UserCard from "../components/UserCard";
 
 const Search = () => {
 
   const [input,setInput] = useState("");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const {getToken} = useAuth()
+  const dispatch = useDispatch()
 
-  const handleSearch = ()=>{}
+  const handleSearch = async(e)=>{
+    if(e.key === "Enter"){
+      try{
+        setUsers([])
+        setLoading(true)
+        const{data} = await api.post(
+          "/api/user/discover",
+          {input},
+          {
+            headers:{Authorization : `Bearer ${await getToken()}`},
+          }
+        );
+        data.success ? setUsers(data.users) : toast.error(data.message)
+        setLoading(false)
+        setInput("")
+      }catch(error){
+        toast.error(error.message)
+        setLoading(false)
+      }
+    }
+  }
+
+  useEffect(()=>{
+    getToken().then((token)=>{
+      dispatch(fetchUser(token))
+    })
+  } , [dispatch , getToken])
+
   return (
     <div
       className="min-h-screen bg-linear-to-br from-[#0b0f3d] via-[#1a1f4d] to-[#3c1f7f]
    text-white"
     >
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -27,8 +58,7 @@ const Search = () => {
           className="mb-8 text-center"
         >
           <h1
-            className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r
-        from-purple-400 to-pink-500"
+            className="bg-linear-to-r from-purple-400 to-pink-500 bg-clip-text text-3xl font-extrabold text-transparent sm:text-4xl"
           >
             🔮Discover People
           </h1>
@@ -73,6 +103,7 @@ const Search = () => {
             className="relative p-6 rounded-xl bg-white/10 backdrop-blur-lg border border-pink-500 shadow-none
             transition-all">
               {/* User Card */}
+              <UserCard user={user} />
             </motion.div>
           ))}
         </motion.div>

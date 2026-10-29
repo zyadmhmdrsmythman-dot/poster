@@ -1,23 +1,34 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 
-let isConnected = false;
+let connectionPromise;
 
 const connectDB = async () => {
-  if (isConnected) {
+  if (mongoose.connection.readyState === 1) {
     return;
   }
 
   const uri = process.env.MONGODB_URI;
-
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    isConnected = conn.connections[0].readyState >= 1;
-    console.log(`Database Connected`);
-  } catch (error) {
-    console.error("Database connection error:", error.message);
-    throw error;
+  if (!uri) {
+    throw new Error("Missing MONGODB_URI");
   }
+
+  if (!connectionPromise) {
+    connectionPromise = mongoose
+      .connect(uri)
+      .then(() => {
+        console.log("Database Connected");
+      })
+      .catch((error) => {
+        console.error("Database connection error:", error.message);
+        throw error;
+      })
+      .finally(() => {
+        connectionPromise = undefined;
+      });
+  }
+
+  await connectionPromise;
 };
 
 export default connectDB;

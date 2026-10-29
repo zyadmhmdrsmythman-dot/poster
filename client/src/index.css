@@ -3,6 +3,34 @@
 
 *{
   font-family: "Outfit", sans-serif;
+  box-sizing: border-box;
+}
+
+html{
+  min-width: 320px;
+  overflow-x: clip;
+}
+
+body{
+  margin: 0;
+  overflow-x: clip;
+}
+
+#root{
+  min-height: 100vh;
+  width: 100%;
+}
+
+.no-scrollbar::-webkit-scrollbar{
+  display: none;
+}
+
+body{
+  overflow-y: auto;
+  background: linear-gradient(to bottom right,
+  #0b0f3b,
+  #1a1f4d,
+  #3c1f7f);
 }
 
 .cl-footer > div:last-child,

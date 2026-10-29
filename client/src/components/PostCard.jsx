@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { BadgeCheck, Heart, MessageCircle, Share2, Trash2, Edit3, Check, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Heart, MessageCircle, Share2, Trash2, Edit3, Check, X } from "lucide-react";
 import moment from "moment";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
@@ -11,27 +11,42 @@ const PostCard = ({ post, onDeleteSuccess }) => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const currentUser = useSelector((state) => state.user?.value);
-  const userId = currentUser?._id;
 
-  const [likes, setLikes] = useState(
-    Array.isArray(post.likes_count) ? post.likes_count : []
-  );
+  // معرفات المستخدم الحالي للمقارنة الآمنة
+  const currentUserId = currentUser?._id ? String(currentUser._id) : null;
 
-  // حالات التعديل والحذف
+  // جلب مصفوفة الإعجابات بصيغة نصوص آمنة
+  const initialLikes = Array.isArray(post?.likes_count)
+    ? post.likes_count.map((id) => String(id?._id || id))
+    : [];
+
+  const [likes, setLikes] = useState(initialLikes);
   const [isEditing, setIsEditing] = useState(false);
-  const [content, setContent] = useState(post.content || "");
-  const [editedContent, setEditedContent] = useState(post.content || "");
+  const [content, setContent] = useState(post?.content || "");
+  const [editedContent, setEditedContent] = useState(post?.content || "");
 
-  // التحقق من أن المستخدم الحالي هو صاحب المنشور
-  const postAuthorId = post.user?._id || post.user;
-  const isAuthor = userId && String(userId) === String(postAuthorId);
+  // تحديث المحتوى في حال تغير المنشور القادم عبر الـ Props
+  useEffect(() => {
+    setContent(post?.content || "");
+    setEditedContent(post?.content || "");
+    if (Array.isArray(post?.likes_count)) {
+      setLikes(post.likes_count.map((id) => String(id?._id || id)));
+    }
+  }, [post]);
 
-  const postWithHashtags = content?.replace(
-    /(#\w+)/g,
-    '<span class="text-indigo-400 font-medium">$1</span>'
-  );
+  // التحقق الآمن مما إذا كان المستخدم الحالي هو صاحب المنشور
+  const postAuthorId = String(post?.user?._id || post?.user || "");
+  const isAuthor = Boolean(currentUserId && currentUserId === postAuthorId);
 
+  const contentParts = content.split(/(#\w+)/g);
+
+  // التفاعل بالإعجاب
   const handleLike = async () => {
+    const activeUserId = currentUserId;
+    if (!activeUserId) {
+      return toast.error("Please log in to like this post");
+    }
+
     try {
       const token = await getToken();
       const { data } = await api.post(
@@ -39,21 +54,27 @@ const PostCard = ({ post, onDeleteSuccess }) => {
         { postId: post._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       if (data.success) {
-        setLikes((prev) =>
-          prev.includes(currentUser?._id)
-            ? prev.filter((id) => id !== currentUser._id)
-            : [...prev, currentUser._id]
-        );
+        // إذا كان الباك إند يرجع مصفوفة اللايكات الجديدة مباشرة نعتمدها، وإلا نحدّث محلياً
+        if (Array.isArray(data.likes)) {
+          setLikes(data.likes.map(String));
+        } else {
+          setLikes((prev) =>
+            prev.includes(activeUserId)
+              ? prev.filter((id) => id !== activeUserId)
+              : [...prev, activeUserId]
+          );
+        }
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to like post");
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
 
-  // حذف المنشور نهائياً من الداتابيز
+  // حذف المنشور نهائياً
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post permanently?")) return;
 
@@ -67,7 +88,7 @@ const PostCard = ({ post, onDeleteSuccess }) => {
         toast.success("Post deleted permanently");
         if (onDeleteSuccess) onDeleteSuccess(post._id);
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Could not delete post");
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
@@ -76,6 +97,10 @@ const PostCard = ({ post, onDeleteSuccess }) => {
 
   // حفظ التعديلات على محتوى المنشور
   const handleUpdate = async () => {
+    if (!editedContent.trim()) {
+      return toast.error("Post content cannot be empty");
+    }
+
     try {
       const token = await getToken();
       const { data } = await api.put(
@@ -89,15 +114,17 @@ const PostCard = ({ post, onDeleteSuccess }) => {
         setContent(editedContent);
         setIsEditing(false);
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to update post");
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     }
   };
 
+  const isLikedByMe = Boolean(currentUserId && likes.includes(currentUserId));
+
   return (
-    <div className="bg-[#182034] text-white rounded-xl shadow-sm p-4 space-y-3 w-full max-w-2xl">
+    <div className="bg-[#182034] text-white rounded-xl shadow-sm p-4 space-y-3 w-full max-w-2xl border border-white/5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div
@@ -105,13 +132,13 @@ const PostCard = ({ post, onDeleteSuccess }) => {
           className="flex items-center gap-3 cursor-pointer"
         >
           <img
-            src={post.user?.profile_picture || "/default-profile.png"}
+            src={post.user?.profile_picture || "https://via.placeholder.com/150"}
             alt={post.user?.username || "User"}
             className="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-purple-500/30"
           />
           <div>
             <div className="flex items-center gap-1">
-              <span className="font-medium text-white">
+              <span className="font-medium text-white hover:underline">
                 {post.user?.full_name || "Unknown User"}
               </span>
               {/* <BadgeCheck className="w-4 h-4 text-blue-500" /> */}
@@ -185,8 +212,17 @@ const PostCard = ({ post, onDeleteSuccess }) => {
         content && (
           <div
             className="text-gray-200 text-sm whitespace-pre-line leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: postWithHashtags }}
-          />
+          >
+            {contentParts.map((part, index) =>
+              part.startsWith("#") ? (
+                <span key={index} className="text-indigo-400 font-medium">
+                  {part}
+                </span>
+              ) : (
+                part
+              )
+            )}
+          </div>
         )
       )}
 
@@ -195,18 +231,14 @@ const PostCard = ({ post, onDeleteSuccess }) => {
         <div
           className={`grid gap-2 ${
             post.image_urls.length === 1 ? "grid-cols-1" : "grid-cols-2"
-          } max-h-75 overflow-hidden `}
+          } rounded-lg`}
         >
           {post.image_urls.map((img, index) => (
             <img
               key={index}
               src={img}
               alt={`Post attachment ${index + 1}`}
-              className={`w-full object-cover rounded-lg ${
-                post.image_urls.length === 1
-                  ? "h-48 md:h-64"
-                  : "h-36 md:h-48"
-              }`}
+              className="h-auto w-full rounded-lg object-contain"
             />
           ))}
         </div>
@@ -220,10 +252,8 @@ const PostCard = ({ post, onDeleteSuccess }) => {
           onClick={handleLike}
         >
           <Heart
-            className={`w-5 h-5 ${
-              userId && likes.includes(userId)
-                ? "text-red-500 fill-red-500"
-                : ""
+            className={`w-5 h-5 transition-colors ${
+              isLikedByMe ? "text-red-500 fill-red-500" : ""
             }`}
           />
           <span>{likes.length}</span>

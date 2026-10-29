@@ -1,16 +1,15 @@
 import { motion } from "framer-motion";
 import { MessageSquare, Eye } from "lucide-react";
-import { useState } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-// import {connection} from "mongoose"
 
 const Messages = () => {
   const navigate = useNavigate();
-  const Connections = [];
+  const connections = useSelector((state) => state.connections?.connections || []);
+
   return (
     <div
-      className="min-h-screen relative bg-linear-to-br from-[#0f172a] via-purple-900
-     to-black text-white overflow-hidden"
+      className="relative min-h-screen overflow-hidden bg-linear-to-br from-[#0f172a] via-purple-900 to-black text-white"
     >
       <div className="absolute inset-0">
         <div
@@ -23,15 +22,14 @@ const Messages = () => {
         ></div>
       </div>
 
-      <div className="relative max-w-4xl mx-auto p-6">
-        <div className="text-center mb-10">
+      <div className="relative mx-auto max-w-4xl p-3 sm:p-6">
+        <div className="mb-8 text-center sm:mb-10">
           <h1
-            className="text-5xl font-extrabold bg-linear-to-r from-purple-400 to-pink-400
-          bg-clip-text text-transparent drop-shadow-lg"
+            className="bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-3xl font-extrabold text-transparent drop-shadow-lg sm:text-5xl"
           >
             Messages
           </h1>
-          <p className="text-gray-300 mt-2 text-lg">
+          <p className="mt-2 text-sm text-gray-300 sm:text-lg">
             Connect with your frinds in a cosmic style 🚀
           </p>
         </div>
@@ -42,23 +40,21 @@ const Messages = () => {
           transition={{ duration: 0.6 }}
           className="flex flex-col gap-4"
         >
-          {Connections.map((user, index) => (
+          {connections.map((user, index) => (
             <motion.div
               key={index}
               whileHover={{ scale: 1.03 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="flex items-center justify-between gap-4 p-5 rounded-xl bg-white/10 backdrop-blur-xl
-            border border-white/20 shadow-lg hover:shadow-purple-500/40 hover:border-purple-400
-            transition cursor-pointer"
+              className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-xl transition hover:border-purple-400 hover:shadow-purple-500/40 sm:gap-4 sm:p-5"
               onClick={() => navigate(`/messages/${user._id}`)}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                 <img
                   src={user.profile_picture}
                   alt={user.full_name}
                   className="rounded-full size-14 border-2 border-purple-400 shadow-md shadow-purple-500/40 "
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="font-semibold text-white text-lg">
                     {user.full_name}
                   </p>
@@ -69,15 +65,13 @@ const Messages = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex shrink-0 gap-1.5 sm:gap-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/messages/${user._id}`);
                   }}
-                  className="p-3 rounded-full bg-linear-to-r from-purple-500/30 to-pink-500/30
-                hover:from-purple-500/30 hover:to-pink-500/30 text-white shadow-md shadow-purple-500/30
-                transition"
+                  className="rounded-full bg-linear-to-r from-purple-500/30 to-pink-500/30 p-2 text-white shadow-md shadow-purple-500/30 transition hover:from-purple-500/30 hover:to-pink-500/30 sm:p-3"
                 >
                   <MessageSquare className="w-5 h-5" />
                 </button>
@@ -87,9 +81,7 @@ const Messages = () => {
                     e.stopPropagation();
                     navigate(`/profile/${user._id}`);
                   }}
-                  className="p-3 rounded-full bg-linear-to-r from-purple-500/30 to-pink-500/30
-                hover:from-purple-500/30 hover:to-pink-500/30 text-white shadow-md shadow-purple-500/30
-                transition"
+                  className="rounded-full bg-linear-to-r from-purple-500/30 to-pink-500/30 p-2 text-white shadow-md shadow-purple-500/30 transition hover:from-purple-500/30 hover:to-pink-500/30 sm:p-3"
                 >
                   <Eye className="w-5 h-5" />
                 </button>

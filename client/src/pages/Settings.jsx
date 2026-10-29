@@ -27,7 +27,7 @@ const Settings = () => {
   return (
     <div
       className="min-h-screen bg-linear-to-br from-gray-900 via-purple-900 to-black text-white
-  p-8"
+  p-4 sm:p-8"
     >
       <div className="max-w-4xl mx-auto">
         <h1
@@ -67,7 +67,7 @@ const Settings = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="p-6 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl"
+                className="rounded-2xl border border-white/20 bg-white/10 p-4 shadow-xl backdrop-blur-xl sm:p-6"
               >
                 <h2 className="text-xl font-bold mb-4">General Settings</h2>
                 <div className="space-y-4">
@@ -120,7 +120,7 @@ const Settings = () => {
                 className="p-6 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl"
               >
                 <h2 className="text-xl font-bold mb-4"></h2>
-                <div className="flex gap-4 justify-around">
+                <div className="flex flex-wrap justify-around gap-3">
                   <button className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20">
                     🌙 Dark
                   </button>
