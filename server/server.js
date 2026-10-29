@@ -209,7 +209,7 @@ app.use(
   })
 );
 
-// تشغيل الخادم والاتصال بالقاعدة محلياً
+// تشغيل الخادم محلياً؛ Vercel يستدعي Express app كـ serverless function.
 const PORT = process.env.PORT || 4000;
 
 const startServer = async () => {
@@ -224,7 +224,8 @@ const startServer = async () => {
   }
 };
 
-// تشغيل السيرفر مباشرة
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
 
-export default httpServer;
+export default app;
