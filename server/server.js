@@ -45,8 +45,8 @@ const allowedSocketOrigins = [
   ...(process.env.CORS_ORIGINS || "").split(","),
   "http://localhost:5173",
 ]
-  .map((origin) => origin.trim().replace(/\/$/, ""))
-  .filter(Boolean);
+  .filter(Boolean) // تصفية القيم الفارغة و undefined أولاً
+  .map((origin) => origin.trim().replace(/\/$/, ""));
 
 const io = new Server(httpServer, {
   cors: {
