@@ -50,7 +50,7 @@ const AvailableGroups = () => {
             key={g._id}
             className="flex flex-col items-stretch justify-between gap-3 rounded-xl bg-gray-800 p-3 sm:flex-row sm:items-center"
           >
-            <span className="min-w-0 break-words text-white">{g.name}</span>
+            <span className="min-w-0 wrap-break-word text-white">{g.name}</span>
             {g.owner === userId ? (
               <button
                 onClick={() =>

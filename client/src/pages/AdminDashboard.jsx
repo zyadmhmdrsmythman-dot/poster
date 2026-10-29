@@ -374,7 +374,7 @@ const AdminDashboard = () => {
               {activeTab === "groups" && (
                 <form
                   onSubmit={createGroup}
-                  className="grid gap-2 border-b border-white/10 bg-white/[0.03] p-3 sm:grid-cols-[1fr_1.2fr_auto] sm:p-4"
+                  className="grid gap-2 border-b border-white/10 bg-white/3 p-3 sm:grid-cols-[1fr_1.2fr_auto] sm:p-4"
                 >
                   <input
                     value={newGroupName}
@@ -505,7 +505,7 @@ const AdminDashboard = () => {
                           </button>
                         </div>
                         {message.text && (
-                          <p className="whitespace-pre-wrap break-words rounded-xl bg-black/15 p-3 text-sm">
+                          <p className="whitespace-pre-wrap wrap-break-word rounded-xl bg-black/15 p-3 text-sm">
                             {message.text}
                           </p>
                         )}
