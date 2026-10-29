@@ -54,7 +54,7 @@ const App = () => {
     if (!user?.id) return;
 
     const eventSource = new EventSource(
-      `${import.meta.env.VITE_BASEURL}/api/message/${user.id}`
+      `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/message/${user.id}`
     );
 
     eventSource.onmessage = (event) => {

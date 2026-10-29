@@ -142,9 +142,9 @@ const JoinedGroupsChat = () => {
     const initializeChat = async () => {
       try {
         const [groupResponse, messagesResponse] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_BASEURL}/api/group/${groupId}`),
+          axios.get(`${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}`),
           axios.get(
-            `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/messages`
+            `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/messages`
           ),
         ]);
         if (!active) return;
@@ -226,7 +226,7 @@ const JoinedGroupsChat = () => {
     try {
       const token = await getToken();
       const { data } = await axios.patch(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/chat-lock`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/chat-lock`,
         { locked: !group.chatLocked },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -249,7 +249,7 @@ const JoinedGroupsChat = () => {
     try {
       const token = await getToken();
       const { data } = await axios.delete(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/leave`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/leave`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!data.success) {
@@ -267,7 +267,7 @@ const JoinedGroupsChat = () => {
     try {
       const token = await getToken();
       const { data } = await axios.patch(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/admin`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/admin`,
         { targetUserId: memberId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -296,7 +296,7 @@ const JoinedGroupsChat = () => {
     try {
       const token = await getToken();
       const { data } = await axios.delete(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/admin/${encodeURIComponent(memberId)}`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/admin/${encodeURIComponent(memberId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -324,7 +324,7 @@ const JoinedGroupsChat = () => {
     try {
       const token = await getToken();
       const { data } = await axios.delete(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/members/${encodeURIComponent(memberId)}`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/members/${encodeURIComponent(memberId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

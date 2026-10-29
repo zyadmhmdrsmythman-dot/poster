@@ -12,7 +12,7 @@ const GroupChat = () => {
             if(!user?.id) return;
             try{
                 const res = await axios.get(
-                    `${import.meta.env.VITE_BASEURL}/api/group/owned/${user.id}`
+                    `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${user.id}`
                 )
                 const payload = Array.isArray(res.data)
                     ? res.data
@@ -33,7 +33,7 @@ const GroupChat = () => {
         if(!groupName) return;
         try{
             const res = await axios.post(
-                    `${import.meta.env.VITE_BASEURL}/api/group`,{
+                    `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group`,{
                         name:groupName,
                         owner:user.id
                     }

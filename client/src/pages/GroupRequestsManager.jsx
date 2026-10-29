@@ -16,7 +16,7 @@ const GroupRequestsManager = ({ ownerId }) => {
             if (!currentOwnerId) return;
             try {
                 const res = await axios.get(
-                    `${import.meta.env.VITE_BASEURL}/api/group/owned/${currentOwnerId}`
+                    `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${currentOwnerId}`
                 );
                 const payload = Array.isArray(res.data) ? res.data : res.data.groups || [];
                 setGroups(payload);
@@ -32,7 +32,7 @@ const GroupRequestsManager = ({ ownerId }) => {
     const acceptRequest = async (groupId, userId) => {
         try {
             await axios.post(
-                `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/accept`,
+                `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/accept`,
                 { userId }
             )
             alert("تم قبول العضو بنجاح")

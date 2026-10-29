@@ -14,7 +14,7 @@ const AvailableGroups = () => {
       if (!userId) return;
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_BASEURL}/api/group/available?userId=${userId}`,
+          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/available?userId=${userId}`,
         );
         setGroups(res.data || []);
       } catch (err) {
@@ -28,7 +28,7 @@ const AvailableGroups = () => {
     if (!userId) return;
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_BASEURL}/api/group/${groupId}/join`,
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/join`,
         { userId },
       );
       alert("تم ارسال طلب الانضمام بنجاح");

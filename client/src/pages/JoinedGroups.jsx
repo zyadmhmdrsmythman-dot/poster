@@ -20,7 +20,7 @@ const JoinedGroups = () => {
       setLoading(true);
       try {
         const res = await axios.get(
-        `${import.meta.env.VITE_BASEURL}/api/group/joined/${user.id}`
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/joined/${user.id}`
         );
 
         const payload = Array.isArray(res.data)
