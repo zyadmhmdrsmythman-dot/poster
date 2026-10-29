@@ -43,7 +43,7 @@ app.use(clerkMiddleware());
 const allowedSocketOrigins = [
   process.env.FRONTEND_URL,
   ...(process.env.CORS_ORIGINS || "").split(","),
-  "http://localhost:5173",
+  "https://poster-a.vercel.app",
 ]
   .filter(Boolean) // تصفية القيم الفارغة و undefined أولاً
   .map((origin) => origin.trim().replace(/\/$/, ""));

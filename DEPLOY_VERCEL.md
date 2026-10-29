@@ -47,7 +47,7 @@
 
 | المتغير | القيمة |
 |---|---|
-| `VITE_BASEURL` | عنوان الخادم المنشور، مثل `https://poster-api.vercel.app`، من دون `/` في النهاية |
+| `VITE_BASEURL` | `https://poster-a.vercel.app`، من دون `/` في النهاية |
 | `VITE_CLERK_PUBLISHABLE_KEY` | مفتاح Clerk العام |
 
 بعد نشر الواجهة، انسخ عنوانها وأضفه إلى `FRONTEND_URL` في مشروع الخادم. أضف العنوان نفسه إلى `CORS_ORIGINS` إذا كان لديك أكثر من نطاق للواجهة، ثم أعد نشر الخادم.
