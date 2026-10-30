@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import StoryWindow from "./StoryWindow";
 import StoryPlayer from "./StoryPlayer";
-import RecentMessages from "./RecentMessage";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import api from "../api/axios.js";
 import toast from "react-hot-toast";
 
@@ -12,38 +11,82 @@ const StoriesBar = () => {
   const [stories, setStories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [viewStory, setViewStory] = useState(null);
-  const {getToken} = useAuth()
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { user } = useUser();
+  const { getToken } = useAuth();
 
-  const fetchStories = async () =>{
-    try{
-      const token = await getToken()
-      const {data} = await api.get("/api/story/get" , {
-        headers:{Authorization: `Bearer ${token}`}
-      })
-      if(data.success)
-      {
-         setStories(data.stories)
-      }else{
-        toast.error(data.message)
+  const fetchStories = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await api.get("/api/story/get", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setStories(data.stories);
+      } else {
+        toast.error(data.message);
       }
-      
-    }catch(error){
-      toast.error(error.message)
+    } catch (error) {
+      toast.error(error.message);
     }
-  }
+  };
 
-  useEffect(()=>{
-    fetchStories()
-  },[])
+  useEffect(() => {
+    fetchStories();
+  }, []);
 
+  const handleNextStory = () => {
+    if (!viewStory || !stories || stories.length === 0) {
+      setViewStory(null);
+      return;
+    }
+    const currentIndex = stories.findIndex((s) => s._id === viewStory._id);
+    if (currentIndex !== -1 && currentIndex < stories.length - 1) {
+      setViewStory(stories[currentIndex + 1]);
+    } else {
+      // عند الوصول لآخر ستوري يتم الإغلاق
+      setViewStory(null);
+    }
+  };
+
+  const handleDeleteStory = async () => {
+    if (!viewStory) return;
+    try {
+      setIsDeleting(true);
+      const token = await getToken();
+      const { data } = await api.delete(`/api/story/${viewStory._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        toast.success("تم حذف الستوري بنجاح");
+        const remainingStories = stories.filter((s) => s._id !== viewStory._id);
+        setStories(remainingStories);
+        handleNextStory();
+      } else {
+        toast.error(data.message || "فشل في حذف الستوري");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "حدث خطأ أثناء الحذف");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const canDelete = Boolean(
+    user &&
+      viewStory &&
+      (viewStory.user?._id === user.id ||
+        viewStory.user === user.id ||
+        viewStory.user?._id === user._id)
+  );
 
   return (
     <>
       {/* Stories Bar */}
       <div
-  className="fixed bottom-0 left-0 sm:left-20 right-0 bg-linear-to-t from-[#0f172a] via-[#1a1f4d]/50 to-[#3c1f7f]/0
-  backdrop-blur-lg border-t border-purple-500/20 z-10 pb-2 h-24"
->
+        className="fixed bottom-0 left-0 sm:left-20 right-0 bg-linear-to-t from-[#0f172a] via-[#1a1f4d]/50 to-[#3c1f7f]/0
+        backdrop-blur-lg border-t border-purple-500/20 z-10 pb-2 h-24"
+      >
         <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
           {/* Create Story */}
           <motion.div
@@ -66,46 +109,48 @@ const StoriesBar = () => {
           {/* Stories */}
           {stories.map((story, index) => (
             <motion.div
-              key={index}
+              key={story._id || index}
               className="shrink-0 flex flex-col mt-3 items-center cursor-pointer"
               style={{ width: "calc(100%/6)" }}
               whileHover={{ scale: 1.15 }}
               transition={{ type: "spring", stiffness: 120 }}
             >
               <img
-                src={story.user.profile_picture}
-                alt={story.user.username}
+                src={story.user?.profile_picture || "/default-profile.png"}
+                alt={story.user?.username || "User"}
                 className="w-14 h-14 rounded-full ring-2 ring-purple-400 object-cover
                       shadow-[0_0_20px_rgba(255,0,255,0.4)]"
                 onClick={() => setViewStory(story)}
               />
               <p className="text-[11px] text-white mt-1 truncate max-w-14 ">
-                {story.user.username || "User"}
+                {story.user?.username || "User"}
               </p>
             </motion.div>
           ))}
         </div>
         {/* Create Story Modal */}
-        {showModal && <StoryWindow setShowModal={setShowModal} fetchStories = {setViewStory} />}
-        {/* StoryWindow */}
+        {showModal && <StoryWindow setShowModal={setShowModal} fetchStories={fetchStories} />}
       </div>
 
       {/* full-screen story Viewer */}
-      {
-        viewStory && (
-          <motion.div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      {viewStory && (
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          >
-            {/* Story Player */}
-            <StoryPlayer viewStory={viewStory} setViewStory={setViewStory} />
-
-            <RecentMessages viewStory={viewStory} setViewStory={setViewStory}/>
-            {/* RecentMessages */}
-          </motion.div>
-        )
-      }
+        >
+          {/* Story Player */}
+          <StoryPlayer
+            viewStory={viewStory}
+            setViewStory={setViewStory}
+            onNext={handleNextStory}
+            onDelete={handleDeleteStory}
+            canDelete={canDelete}
+            isDeleting={isDeleting}
+          />
+        </motion.div>
+      )}
     </>
   );
 };

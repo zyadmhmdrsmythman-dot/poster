@@ -1,11 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ChevronRight, Trash2, X } from "lucide-react";
 
-const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isDeleting }) => {
+const StoryPlayer = ({
+  viewStory,
+  setViewStory,
+  onNext,
+  onDelete,
+  canDelete,
+  isDeleting,
+}) => {
   const [progress, setProgress] = useState(0);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setViewStory(null);
+  }, [setViewStory]);
+
+  const handleNext = () => {
+    if (onNext) {
+      onNext();
+    } else {
+      handleClose();
+    }
   };
 
   useEffect(() => {
@@ -13,18 +28,25 @@ const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isD
 
     if (viewStory && viewStory.media_type !== "video") {
       setProgress(0);
-      const duration = 10000; // 10 ثوانٍ
-      const step = 100; // تحديث كل 100 ميلي ثانية
+      const duration = 10000; // 10 ثوانٍ لعرض الستوري
+      const step = 50;
       let elapsed = 0;
 
-      // تحديث شريط التقدم كل 100 ميلي ثانية
+      // تحديث شريط التقدم بانتظام
       progressInterval = setInterval(() => {
         elapsed += step;
-        setProgress((elapsed / duration) * 100);
+        const currentProgress = (elapsed / duration) * 100;
+        if (currentProgress >= 100) {
+          setProgress(100);
+          clearInterval(progressInterval);
+        } else {
+          setProgress(currentProgress);
+        }
       }, step);
 
+      // بعد انتهاء الشريط يقفل الاستوري بشكل مباشر
       timer = setTimeout(() => {
-        onNext();
+        handleClose();
       }, duration);
     }
 
@@ -32,26 +54,35 @@ const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isD
       clearTimeout(timer);
       clearInterval(progressInterval);
     };
-  }, [viewStory, onNext]);
+  }, [viewStory, handleClose]);
 
   if (!viewStory) return null;
 
+  const getMediaUrl = (mediaUrl) => {
+    if (Array.isArray(mediaUrl)) {
+      return mediaUrl[0] || "";
+    }
+    return mediaUrl || "";
+  };
+
   const renderContent = () => {
+    const url = getMediaUrl(viewStory.media_url);
+
     switch (viewStory.media_type) {
       case "image":
         return (
           <img
-            src={viewStory.media_url}
+            src={url}
             alt="Story"
-            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl select-none"
           />
         );
       case "video":
         return (
           <video
-            src={viewStory.media_url}
+            src={url}
             autoPlay
-            onEnded={onNext}
+            onEnded={handleClose}
             controls
             className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
           />
@@ -79,34 +110,44 @@ const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isD
     >
       {/* شريط التقدم العلوي */}
       {viewStory.media_type !== "video" && (
-        <div className="absolute top-0 left-0 w-full h-1 bg-white/20 z-30">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-white/20 z-30">
           <div
-            className="h-full bg-white transition-all duration-100 ease-linear"
+            className="h-full bg-white transition-all duration-75 ease-linear rounded-r-full"
             style={{ width: `${progress}%` }}
           />
         </div>
       )}
 
       {/* بيانات صاحب الستوري */}
-      <div className="absolute top-4 left-4 sm:left-8 flex items-center gap-3 p-2 px-4 rounded-full bg-black/40 backdrop-blur-md z-30 border border-white/10">
+      <div className="absolute top-4 left-4 sm:left-8 flex items-center gap-3 p-2 px-4 rounded-full bg-black/40 backdrop-blur-md z-30 border border-white/10 shadow-lg">
         <img
           src={viewStory.user?.profile_picture || "/default-profile.png"}
           alt="Profile"
           className="size-8 rounded-full object-cover border border-white/20"
         />
         <div className="text-white font-medium flex items-center gap-1.5 text-sm">
-          <span>{viewStory.user?.full_name || "User"}</span>
-          {/* <BadgeCheck className="w-4 h-4 text-blue-400" /> */}
+          <span>{viewStory.user?.full_name || viewStory.user?.username || "User"}</span>
         </div>
       </div>
 
       {/* زر الإغلاق */}
       <button
         onClick={handleClose}
-        className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition z-30 cursor-pointer"
-        title="Close"
+        className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition z-30 cursor-pointer"
+        title="إغلاق (Close)"
       >
         <X className="w-7 h-7" />
+      </button>
+
+      {/* زر الانتقال للستوري التالي الجانبي */}
+      <button
+        type="button"
+        onClick={handleNext}
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white backdrop-blur-md border border-white/20 transition-all duration-200 cursor-pointer shadow-xl active:scale-90"
+        title="الستوري التالي"
+        aria-label="Next story"
+      >
+        <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
       </button>
 
       {/* عرض محتوى الستوري */}
@@ -114,28 +155,30 @@ const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isD
         {renderContent()}
       </div>
 
+      {/* شريط التحكم السفلي */}
       <div className="absolute bottom-6 left-4 right-4 flex items-center justify-between z-30 sm:left-8 sm:right-8">
         {canDelete ? (
           <button
             type="button"
             onClick={onDelete}
             disabled={isDeleting}
-            className="flex items-center gap-2 rounded-full bg-red-600/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full bg-red-600/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-lg"
             aria-label="Delete story"
           >
             <Trash2 className="h-4 w-4" />
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? "جاري الحذف..." : "حذف"}
           </button>
         ) : (
           <span />
         )}
+
         <button
           type="button"
-          onClick={onNext}
-          className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/25"
+          onClick={handleNext}
+          className="flex items-center gap-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white transition duration-200 cursor-pointer shadow-lg active:scale-95 border border-white/20"
           aria-label="Go to next story"
         >
-          Next
+          <span>التالي</span>
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
