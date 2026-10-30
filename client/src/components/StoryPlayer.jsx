@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { BadgeCheck, X } from "lucide-react";
+import { ChevronRight, Trash2, X } from "lucide-react";
 
-const StoryPlayer = ({ viewStory, setViewStory }) => {
+const StoryPlayer = ({ viewStory, setViewStory, onNext, onDelete, canDelete, isDeleting }) => {
   const [progress, setProgress] = useState(0);
 
   const handleClose = () => {
@@ -23,9 +23,8 @@ const StoryPlayer = ({ viewStory, setViewStory }) => {
         setProgress((elapsed / duration) * 100);
       }, step);
 
-      // إغلاق الستوري تلقائياً عند انتهاء الـ 10 ثوانٍ
       timer = setTimeout(() => {
-        setViewStory(null);
+        onNext();
       }, duration);
     }
 
@@ -33,7 +32,7 @@ const StoryPlayer = ({ viewStory, setViewStory }) => {
       clearTimeout(timer);
       clearInterval(progressInterval);
     };
-  }, [viewStory, setViewStory]);
+  }, [viewStory, onNext]);
 
   if (!viewStory) return null;
 
@@ -52,7 +51,7 @@ const StoryPlayer = ({ viewStory, setViewStory }) => {
           <video
             src={viewStory.media_url}
             autoPlay
-            onEnded={() => setViewStory(null)}
+            onEnded={onNext}
             controls
             className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
           />
@@ -113,6 +112,32 @@ const StoryPlayer = ({ viewStory, setViewStory }) => {
       {/* عرض محتوى الستوري */}
       <div className="max-w-[90vw] max-h-[85vh] flex items-center justify-center z-10">
         {renderContent()}
+      </div>
+
+      <div className="absolute bottom-6 left-4 right-4 flex items-center justify-between z-30 sm:left-8 sm:right-8">
+        {canDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isDeleting}
+            className="flex items-center gap-2 rounded-full bg-red-600/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Delete story"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/25"
+          aria-label="Go to next story"
+        >
+          Next
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );

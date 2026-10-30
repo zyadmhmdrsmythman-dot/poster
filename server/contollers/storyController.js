@@ -71,13 +71,42 @@ export const getStories = async (req, res) => {
     const following = Array.isArray(user.following) ? user.following : [];
     const userIds = [String(user._id), ...connections.map(String), ...following.map(String)];
 
-    const stories = await Story.find({ user: { $in: userIds } })
+    const expiresAfter = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const stories = await Story.find({
+      user: { $in: userIds },
+      createdAt: { $gt: expiresAfter },
+    })
       .populate("user")
       .sort({ createdAt: -1 });
 
     return res.json({ success: true, stories });
   } catch (error) {
     console.error("Error fetching stories:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteUserStory = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const story = await Story.findOneAndDelete({
+      _id: req.params.storyId,
+      user: userId,
+    });
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found or you are not allowed to delete it",
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting story:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
