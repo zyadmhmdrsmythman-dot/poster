@@ -311,22 +311,37 @@ export const joinGroup = async (req, res) => {
     const { userId } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ error: "User ID is required" });
+      return res.status(400).json({ success: false, message: "User ID is required" });
     }
 
     const group = await Group.findById(id);
-    if (!group) return res.status(404).json({ error: "Group not found" });
-
-    const alreadyMember = group.members.find((m) => m.userId === userId);
-    if (alreadyMember) {
-      return res.status(400).json({ error: "Already requested or member" });
+    if (!group) {
+      return res.status(404).json({ success: false, message: "المجموعة غير موجودة" });
     }
 
-    group.members.push({ userId, status: "pending" });
+    const alreadyMember = group.members.find(
+      (m) => String(m.userId) === String(userId)
+    );
+    if (alreadyMember) {
+      if (alreadyMember.status === "accepted") {
+        return res.status(400).json({
+          success: false,
+          isMember: true,
+          message: "أنت بالفعل عضو في هذه المجموعة",
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        isPending: true,
+        message: "طلب الانضمام قيد المراجعة بالفعل",
+      });
+    }
+
+    group.members.push({ userId, status: "pending", role: "member" });
     await group.save();
-    res.json({ message: "Request sent" });
+    res.json({ success: true, message: "تم إرسال طلب الانضمام بنجاح" });
   } catch (err) {
-    res.status(500).json({ err: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
