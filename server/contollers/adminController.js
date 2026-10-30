@@ -383,10 +383,16 @@ export const getAdminGroups = async (req, res) => {
       Group.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Group.countDocuments(filter),
     ]);
-    const userIds = [...new Set(groups.flatMap((group) => [
-      group.owner,
-      ...group.members.map((member) => member.userId),
-    ]))];
+    const userIds = [
+      ...new Set(
+        groups.flatMap((group) => [
+          group.owner,
+          ...(Array.isArray(group.members)
+            ? group.members.map((member) => member?.userId)
+            : []),
+        ]).filter(Boolean)
+      ),
+    ];
     const users = await User.find({ _id: { $in: userIds } })
       .select("_id full_name username profile_picture")
       .lean();
@@ -394,9 +400,9 @@ export const getAdminGroups = async (req, res) => {
     const results = groups.map((group) => ({
       ...group,
       ownerProfile: usersById.get(String(group.owner)) || null,
-      members: group.members.map((member) => ({
+      members: (Array.isArray(group.members) ? group.members : []).map((member) => ({
         ...member,
-        profile: usersById.get(String(member.userId)) || null,
+        profile: usersById.get(String(member?.userId)) || null,
       })),
     }));
 

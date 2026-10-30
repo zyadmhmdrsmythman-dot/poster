@@ -523,103 +523,110 @@ const AdminDashboard = () => {
                     ))}
 
                   {activeTab === "groups" &&
-                    rows.map((group) => (
-                      <article key={group._id} className="space-y-3 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <h2 className="font-bold">{group.name}</h2>
-                            <p className="text-xs text-slate-400">
-                              المنشئ: {displayName(group.ownerProfile)} ·{" "}
-                              {group.members.filter((member) => member.status === "accepted").length} أعضاء
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => renameGroup(group)}
-                              className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-200 hover:bg-white/10"
-                            >
-                              تعديل الاسم
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setGroupLock(group, !group.chatLocked)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-400/20"
-                            >
-                              {group.chatLocked ? <LockOpen size={14} /> : <Lock size={14} />}
-                              {group.chatLocked ? "فتح الشات" : "قفل الشات"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteGroup(group)}
-                              className="rounded-lg border border-rose-300/20 bg-rose-400/10 p-2 text-rose-100 hover:bg-rose-400/20"
-                              aria-label="حذف المجموعة"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="grid gap-2 md:grid-cols-2">
-                          {group.members.map((member) => (
-                            <div
-                              key={member.userId}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 p-3"
-                            >
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {displayName(member.profile)}
-                                  {String(member.userId) === String(group.owner) && (
-                                    <span className="mr-2 text-xs text-amber-200">المنشئ</span>
-                                  )}
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                  {member.status === "pending"
-                                    ? "طلب معلّق"
-                                    : member.role === "admin"
-                                      ? "مسؤول"
-                                      : "عضو"}
-                                </p>
-                              </div>
-                              {String(member.userId) !== String(group.owner) && (
-                                <div className="flex gap-1.5">
-                                  {member.status === "accepted" && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        updateMember(
-                                          group,
-                                          member,
-                                          member.role === "admin" ? "member" : "admin"
-                                        )
-                                      }
-                                      className="rounded-lg bg-violet-400/10 px-2 py-1.5 text-[11px] text-violet-100 hover:bg-violet-400/20"
-                                    >
-                                      {member.role === "admin" ? "إزالة المسؤول" : "تعيين مسؤول"}
-                                    </button>
-                                  )}
-                                  {member.status === "pending" && (
-                                    <button
-                                      type="button"
-                                      onClick={() => updateMember(group, member, "accept")}
-                                      className="rounded-lg bg-emerald-400/10 px-2 py-1.5 text-[11px] text-emerald-100 hover:bg-emerald-400/20"
-                                    >
-                                      قبول الطلب
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => updateMember(group, member, "remove")}
-                                    className="rounded-lg bg-rose-400/10 px-2 py-1.5 text-[11px] text-rose-100 hover:bg-rose-400/20"
-                                  >
-                                    إزالة
-                                  </button>
-                                </div>
-                              )}
+                    rows.map((group) => {
+                      const membersList = Array.isArray(group.members) ? group.members : [];
+                      const acceptedCount = membersList.filter(
+                        (member) => member && member.status === "accepted"
+                      ).length;
+
+                      return (
+                        <article key={group._id} className="space-y-3 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <h2 className="font-bold">{group.name}</h2>
+                              <p className="text-xs text-slate-400">
+                                المنشئ: {displayName(group.ownerProfile)} ·{" "}
+                                {acceptedCount} أعضاء
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      </article>
-                    ))}
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => renameGroup(group)}
+                                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-200 hover:bg-white/10"
+                              >
+                                تعديل الاسم
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGroupLock(group, !group.chatLocked)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-400/20"
+                              >
+                                {group.chatLocked ? <LockOpen size={14} /> : <Lock size={14} />}
+                                {group.chatLocked ? "فتح الشات" : "قفل الشات"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteGroup(group)}
+                                className="rounded-lg border border-rose-300/20 bg-rose-400/10 p-2 text-rose-100 hover:bg-rose-400/20"
+                                aria-label="حذف المجموعة"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {membersList.map((member, idx) => (
+                              <div
+                                key={member?.userId || member?._id || idx}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 p-3"
+                              >
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {displayName(member?.profile)}
+                                    {String(member?.userId) === String(group.owner) && (
+                                      <span className="mr-2 text-xs text-amber-200">المنشئ</span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {member?.status === "pending"
+                                      ? "طلب معلّق"
+                                      : member?.role === "admin"
+                                        ? "مسؤول"
+                                        : "عضو"}
+                                  </p>
+                                </div>
+                                {String(member?.userId) !== String(group.owner) && (
+                                  <div className="flex gap-1.5">
+                                    {member?.status === "accepted" && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateMember(
+                                            group,
+                                            member,
+                                            member?.role === "admin" ? "member" : "admin"
+                                          )
+                                        }
+                                        className="rounded-lg bg-violet-400/10 px-2 py-1.5 text-[11px] text-violet-100 hover:bg-violet-400/20"
+                                      >
+                                        {member?.role === "admin" ? "إزالة المسؤول" : "تعيين مسؤول"}
+                                      </button>
+                                    )}
+                                    {member?.status === "pending" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateMember(group, member, "accept")}
+                                        className="rounded-lg bg-emerald-400/10 px-2 py-1.5 text-[11px] text-emerald-100 hover:bg-emerald-400/20"
+                                      >
+                                        قبول الطلب
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => updateMember(group, member, "remove")}
+                                      className="rounded-lg bg-rose-400/10 px-2 py-1.5 text-[11px] text-rose-100 hover:bg-rose-400/20"
+                                    >
+                                      إزالة
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </article>
+                      );
+                    })}
                 </div>
               )}
 

@@ -130,7 +130,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 min-h-dvh bg-black/85 backdrop-blur-md text-white
+      className="fixed inset-0 z-50 min-h-screen bg-black/85 backdrop-blur-md text-white
       flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
     >
       <div

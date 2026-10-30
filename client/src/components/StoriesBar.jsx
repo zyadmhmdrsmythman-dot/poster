@@ -227,14 +227,15 @@ const StoriesBar = () => {
             </motion.div>
           ))}
         </div>
-        {/* Create Story Modal */}
-        {showModal && (
-          <StoryWindow
-            setShowModal={setShowModal}
-            fetchStories={fetchStories}
-          />
-        )}
       </div>
+
+      {/* Create Story Modal */}
+      {showModal && (
+        <StoryWindow
+          setShowModal={setShowModal}
+          fetchStories={fetchStories}
+        />
+      )}
 
       {/* full-screen story Viewer */}
       {viewStory && (
