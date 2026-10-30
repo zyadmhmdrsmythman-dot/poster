@@ -57,13 +57,7 @@ const allowedSocketOrigins = [
 
 const io = new Server(httpServer, {
   cors: {
-    origin: (origin, callback) => {
-      if (!origin || allowedSocketOrigins.includes(origin.replace(/\/$/, ""))) {
-        return callback(null, true);
-      }
-      return callback(new Error("Origin is not allowed to connect"));
-    },
-    methods: ["GET", "POST"],
+    origin: true, methods: ["GET", "POST"], credentials: true,
   },
 });
 setGroupSocketServer(io);
