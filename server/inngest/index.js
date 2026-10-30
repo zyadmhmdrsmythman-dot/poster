@@ -9,22 +9,29 @@ import Message from "../models/Message.js";
 // إنشاء العميل
 export const inngest = new Inngest({ id: "my-app" });
 
+const getPrimaryEmail = ({ email_addresses, primary_email_address_id }) =>
+  email_addresses?.find(({ id }) => id === primary_email_address_id)
+    ?.email_address ||
+  email_addresses?.[0]?.email_address ||
+  "";
+
 // 1. دالة إنشاء المستخدم
 const syncUserCreation = inngest.createFunction(
   {
     id: "sync-user-from-clerk",
     triggers: [{ event: "clerk/user.created" }],
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     await connectDB();
 
-    const { id, first_name, last_name, email_addresses, image_url } =
-      event.data;
-
-    const email = email_addresses?.[0]?.email_address || "";
+    const { id, first_name, last_name, image_url } = event.data;
+    const email = getPrimaryEmail(event.data);
     let username = email ? email.split("@")[0] : `user_${id.slice(-6)}`;
 
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({
+      username,
+      _id: { $ne: id },
+    });
     if (existingUser) {
       username = `${username}${Math.floor(Math.random() * 10000)}`;
     }
@@ -38,6 +45,27 @@ const syncUserCreation = inngest.createFunction(
     };
 
     await User.findByIdAndUpdate(id, userData, { upsert: true, new: true });
+
+    if (email) {
+      await step.run("send-welcome-email", async () => {
+        await sendEmail({
+          to: email,
+          subject: "Welcome to Poster",
+          body: `<div style="font-family:Arial, sans-serif; padding:20px;">
+<h2>Welcome to Poster!</h2>
+<p>Your account is ready. Start connecting with your community.</p>
+<p><a href="${process.env.FRONTEND_URL || "https://poster-a.vercel.app"}" style="color:#10b981;">Visit Poster</a></p>
+<br/>
+<p>Thanks,<br/>Poster - Stay Connected</p>
+</div>`,
+        });
+      });
+    } else {
+      console.warn(
+        `Welcome email skipped for Clerk user ${id}: no email address`,
+      );
+    }
+
     return { success: true };
   },
 );
@@ -51,11 +79,10 @@ const syncUserUpdation = inngest.createFunction(
   async ({ event }) => {
     await connectDB();
 
-    const { id, first_name, last_name, email_addresses, image_url } =
-      event.data;
+    const { id, first_name, last_name, image_url } = event.data;
 
     const updatedUserData = {
-      email: email_addresses?.[0]?.email_address || "",
+      email: getPrimaryEmail(event.data),
       full_name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
       profile_picture: image_url,
     };
