@@ -184,23 +184,23 @@ const StoriesBar = () => {
     <>
       {/* Stories Bar */}
       <div
-        className="fixed bottom-0 left-0 sm:left-20 right-0 bg-linear-to-t from-[#0f172a] via-[#1a1f4d]/50 to-[#3c1f7f]/0
-        backdrop-blur-lg border-t border-purple-500/20 z-10 pb-2 h-24"
+        className="fixed bottom-0 left-0 sm:left-20 right-0 bg-linear-to-t from-[#0f172a] via-[#1a1f4d]/80 to-[#3c1f7f]/0
+        backdrop-blur-lg border-t border-purple-500/20 z-10 pb-2 h-24 px-2 sm:px-4"
       >
-        <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center space-x-3 sm:space-x-4 overflow-x-auto scrollbar-hide py-1">
           {/* Create Story */}
           <motion.div
             onClick={() => setShowModal(true)}
-            className="shrink-0 sm:ml-3 mt-4 flex flex-col items-center cursor-pointer"
-            whileHover={{ scale: 1.2 }}
+            className="shrink-0 ml-1 sm:ml-3 mt-3 flex flex-col items-center cursor-pointer"
+            whileHover={{ scale: 1.15 }}
             transition={{ type: "spring", stiffness: 150 }}
           >
             <div
-              className="w-14 h-14 rounded-full bg-linear-to-tr from-indigo-500 to-purple-600
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-linear-to-tr from-indigo-500 to-purple-600
                  flex items-center justify-center shadow-[0_0_20px_rgba(255,0,255,0.5)]
                   hover:shadow-[0_0_35px_rgba(255,0,255,0.8)] transition-all"
             >
-              <Plus className="w-6 h-6 text-white" />
+              <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <p className="text-[11px] text-white/70 mt-1 font-semibold animate-pulse">
               Story
@@ -210,19 +210,18 @@ const StoriesBar = () => {
           {stories.map((story, index) => (
             <motion.div
               key={story._id || index}
-              className="shrink-0 flex flex-col mt-3 items-center cursor-pointer"
-              style={{ width: "calc(100%/6)" }}
-              whileHover={{ scale: 1.15 }}
+              className="shrink-0 flex flex-col mt-3 items-center cursor-pointer w-16 sm:w-20 px-1"
+              whileHover={{ scale: 1.1 }}
               transition={{ type: "spring", stiffness: 120 }}
             >
               <img
                 src={story.user?.profile_picture || "/default-profile.png"}
                 alt={story.user?.username || "User"}
-                className="w-14 h-14 rounded-full ring-2 ring-purple-400 object-cover
+                className="w-13 h-13 sm:w-14 sm:h-14 rounded-full ring-2 ring-purple-400 object-cover
                       shadow-[0_0_20px_rgba(255,0,255,0.4)]"
                 onClick={() => setViewStory(story)}
               />
-              <p className="text-[11px] text-white mt-1 truncate max-w-14 ">
+              <p className="text-[11px] text-white mt-1 truncate max-w-14 text-center">
                 {story.user?.username || "User"}
               </p>
             </motion.div>

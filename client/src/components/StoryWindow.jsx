@@ -130,30 +130,29 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
 
   return (
     <div
-      className="fixed inset-0 z-99999 min-h-screen bg-black/80 backdrop-blur text-white
-      flex items-end justify-center p-4"
+      className="fixed inset-0 z-50 min-h-dvh bg-black/85 backdrop-blur-md text-white
+      flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
     >
       <div
         className="w-full max-w-md bg-[#131226] border border-purple-500/20
-        rounded-2xl p-5 shadow-[0_0_50px_rgba(0,0,0,0.8)]
-        flex flex-col -translate-y-220 transition-transform"
+        rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="text-center mb-4 flex items-center justify-between">
+        <div className="text-center mb-3 sm:mb-4 flex items-center justify-between">
           <button
             type="button"
             className="text-white p-2 cursor-pointer hover:bg-white/10 rounded-full transition"
             onClick={() => setShowModal(false)}
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <h2 className="text-lg font-semibold">Create Story</h2>
-          <span className="w-10"></span>
+          <h2 className="text-base sm:text-lg font-semibold">Create Story</h2>
+          <span className="w-8 sm:w-10"></span>
         </div>
 
         {/* Story Canvas / Preview */}
         <div
-          className="rounded-lg h-96 flex items-center justify-center relative overflow-hidden p-4"
+          className="rounded-xl h-64 sm:h-80 md:h-96 flex items-center justify-center relative overflow-hidden p-4 shadow-inner"
           style={{ backgroundColor: background }}
         >
           {mode === "text" ? (
@@ -161,7 +160,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="اكتب هنا..."
-              className="w-full h-full bg-transparent text-white text-center text-xl font-bold placeholder-white/60 resize-none outline-none flex items-center justify-center flex-col my-auto"
+              className="w-full h-full bg-transparent text-white text-center text-lg sm:text-xl font-bold placeholder-white/60 resize-none outline-none flex items-center justify-center flex-col my-auto"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -187,7 +186,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
         </div>
 
         {/* Color Palette */}
-        <div className="flex justify-center mt-4 gap-2">
+        <div className="flex justify-center mt-3 sm:mt-4 gap-2 flex-wrap">
           {bgColors.map((color) => (
             <button
               key={color}
@@ -202,7 +201,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
         </div>
 
         {/* Mode Switchers */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-3 sm:mt-4">
           <button
             type="button"
             onClick={() => {
@@ -210,20 +209,20 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
               setMedia(null);
               setPreviewUrl(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 p-2 rounded cursor-pointer transition ${
+            className={`flex-1 flex items-center justify-center gap-2 p-2 sm:p-2.5 rounded-lg text-sm cursor-pointer transition ${
               mode === "text"
-                ? "bg-white text-black font-medium"
-                : "bg-zinc-800 text-white"
+                ? "bg-white text-black font-semibold shadow-md"
+                : "bg-zinc-800 text-white hover:bg-zinc-700"
             }`}
           >
-            <TextIcon size={18} /> Text
+            <TextIcon size={16} /> Text
           </button>
 
           <label
-            className={`flex-1 flex items-center justify-center gap-2 p-2 rounded cursor-pointer transition ${
+            className={`flex-1 flex items-center justify-center gap-2 p-2 sm:p-2.5 rounded-lg text-sm cursor-pointer transition ${
               mode === "media"
-                ? "bg-white text-black font-medium"
-                : "bg-zinc-800 text-white"
+                ? "bg-white text-black font-semibold shadow-md"
+                : "bg-zinc-800 text-white hover:bg-zinc-700"
             }`}
           >
             <input
@@ -232,7 +231,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
               accept="image/*,video/*"
               className="hidden"
             />
-            <Upload size={18} /> Photo/Video
+            <Upload size={16} /> Photo/Video
           </label>
         </div>
 
@@ -242,7 +241,7 @@ const StoryWindow = ({ setShowModal, fetchStories }) => {
           disabled={isSubmitting}
           onClick={handleCreateStory}
           className="flex items-center justify-center gap-2 text-white
-          py-2.5 mt-4 w-full rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600
+          py-2.5 mt-3 sm:mt-4 w-full rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600
           hover:to-purple-700 active:scale-95 transition cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
         >
           {isSubmitting ? (

@@ -8,7 +8,7 @@ import api from "../api/axios.js";
 
 const TABS = [
   { key: "all", icon: Bell },
-  { key: "like", icon: Heart }, // تم تصحيح Like إلى like
+  { key: "like", icon: Heart },
   { key: "comment", icon: MessageCircle },
   { key: "media", icon: Image },
 ];
@@ -62,11 +62,11 @@ const NotificationsPage = () => {
       : notifications.filter((n) => n.type === activeTab);
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white p-4 relative">
+    <div className="min-h-screen bg-linear-to-b from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white p-3 sm:p-4 pb-28 sm:pb-32 relative">
       {/* Header */}
-      <div className="max-w-2xl mx-auto sticky top-0 z-20 backdrop-blur-lg bg-[#182034]/80 rounded-xl p-3 flex items-center gap-3 shadow-lg border border-purple-500/30 mb-6">
-        <Bell className="w-6 h-6 text-purple-400" />
-        <h1 className="text-xl font-bold">Notifications</h1>
+      <div className="max-w-2xl mx-auto sticky top-2 z-20 backdrop-blur-lg bg-[#182034]/90 rounded-2xl p-3 pl-14 sm:pl-4 flex items-center gap-3 shadow-lg border border-purple-500/30 mb-6">
+        <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+        <h1 className="text-lg sm:text-xl font-bold">Notifications</h1>
       </div>
 
       {/* Filter Tabs */}
@@ -78,7 +78,7 @@ const NotificationsPage = () => {
             <motion.div
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`cursor-pointer p-3 rounded-xl backdrop-blur-lg bg-[#182034]/40 border flex items-center justify-center transition-colors ${
+              className={`cursor-pointer p-2.5 sm:p-3 rounded-xl backdrop-blur-lg bg-[#182034]/40 border flex items-center justify-center transition-colors ${
                 isActive
                   ? "border-purple-500 bg-[#182034]/80 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
                   : "border-purple-500/20 hover:border-purple-500/40"
@@ -87,7 +87,7 @@ const NotificationsPage = () => {
               whileTap={{ scale: 0.95 }}
             >
               <Icon
-                className={`w-6 h-6 ${
+                className={`w-5 h-5 sm:w-6 sm:h-6 ${
                   isActive ? "text-purple-400" : "text-gray-400"
                 }`}
               />
@@ -97,11 +97,11 @@ const NotificationsPage = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="space-y-4 max-w-2xl mx-auto pb-10">
+      <div className="space-y-3 sm:space-y-4 max-w-2xl mx-auto pb-10">
         {loading ? (
-          <p className="text-center text-gray-400 py-8">Loading...</p>
+          <p className="text-center text-gray-400 py-8 text-sm">Loading...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">No notifications found.</p>
+          <p className="text-center text-gray-400 py-8 text-sm">No notifications found.</p>
         ) : (
           <AnimatePresence>
             {filtered.map((n) => {
@@ -112,33 +112,23 @@ const NotificationsPage = () => {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex items-start gap-4 p-4 rounded-2xl backdrop-blur-lg bg-[#102034]/50 border border-purple-500/20 shadow-md hover:border-purple-500/40 transition-all"
+                  className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl backdrop-blur-lg bg-[#102034]/50 border border-purple-500/20 shadow-md hover:border-purple-500/40 transition-all"
                 >
-                  {/* Profile Picture */}
                   <img
-                    src={user.profile_picture || "/default.png"}
-                    alt={user.full_name}
-                    className="w-11 h-11 rounded-full object-cover border border-purple-400/50 shrink-0"
+                    src={user.profile_picture || "/default-profile.png"}
+                    alt={user.full_name || "User"}
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border border-purple-400/30 shrink-0"
                   />
-
-                  {/* Notification Content */}
-                  <div className="flex-1 space-y-1">
-                    <p className="text-white text-sm leading-relaxed">
-                      <span className="font-semibold text-purple-200 mr-1.5">
-                        {user.full_name}
-                      </span> {" "}
-                      {n.type === "like" && "liked your post"}
-                      {n.type === "comment" && "commented on your post"}
-                      {n.type === "media" && "shared media with you"}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-snug">
+                      <span className="font-semibold text-purple-200">
+                        {user.full_name || "User"}
+                      </span>{" "}
+                      <span className="text-gray-300">
+                        {n.message || "performed an action"}
+                      </span>
                     </p>
-
-                    {n.type === "comment" && n.commentText && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-[#1f264f]/50 border border-purple-500/20 text-gray-200 text-sm">
-                        {n.commentText}
-                      </div>
-                    )}
-
-                    <span className="block text-xs text-gray-400 pt-1">
+                    <span className="text-xs text-purple-400/80 mt-1 block">
                       {moment(n.createdAt).fromNow()}
                     </span>
                   </div>

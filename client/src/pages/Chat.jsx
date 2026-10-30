@@ -1,11 +1,12 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { ImageIcon, SendHorizonal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ImageIcon, SendHorizonal } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios.js";
 import toast from "react-hot-toast";
+import Loading from "../components/Loading";
 import {
   addMessages,
   resetMessages,
@@ -13,6 +14,7 @@ import {
 } from "../features/messages/messsagesSlice.js";
 
 const Chat = () => {
+  const navigate = useNavigate();
   const [text, setText] = useState("");
   const [image, setImage] = useState(null);
   const [user, setUser] = useState(null);
@@ -129,7 +131,9 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (!user || !currentUserId) return null;
+  if (!user || !currentUserId) {
+    return <Loading height="80vh" />;
+  }
 
   const isBlockedByUser = user.blockedUsers?.some(
     (id) => String(id) === currentUserId
@@ -137,15 +141,22 @@ const Chat = () => {
 
   return (
     <div className="relative flex h-[calc(100dvh-3.5rem)] min-h-[420px] flex-col overflow-hidden bg-linear-to-br from-[#0b0f3b] via-[#1a1f4d] to-[#3c1f7f] text-white sm:h-screen">
-      <div className="z-10 flex items-center gap-3 border-b border-purple-500/30 bg-white/5 p-3 shadow-[0_0_15px_rgba(131,58,180,0.3)] backdrop-blur-lg sm:px-6 md:px-10">
+      <div className="z-10 flex items-center gap-2 sm:gap-3 border-b border-purple-500/30 bg-white/5 p-2.5 sm:p-3 shadow-[0_0_15px_rgba(131,58,180,0.3)] backdrop-blur-lg sm:px-6 md:px-10">
+        <button
+          onClick={() => navigate("/messages")}
+          className="p-1.5 rounded-lg text-purple-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          title="Back to messages"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <img
           src={user.profile_picture || ""}
           alt={user.full_name || "User"}
-          className="w-12 h-12 rounded-full border border-purple-300 shadow-[0_0_10px_rgba(255,0,255,0.5)]"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-purple-300 shadow-[0_0_10px_rgba(255,0,255,0.5)] object-cover"
         />
-        <div>
-          <p className="font-bold text-purple-200">{user.full_name}</p>
-          <p className="text-sm text-gray-400">@{user.username}</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-purple-200 truncate text-sm sm:text-base">{user.full_name}</p>
+          <p className="text-xs sm:text-sm text-gray-400 truncate">@{user.username}</p>
         </div>
       </div>
 
@@ -208,7 +219,7 @@ const Chat = () => {
                     )}
 
                     <div
-                      className={`p-3 text-sm max-w-sm rounded-xl shadow-lg transition-all duration-300 ${
+                      className={`p-3 text-sm max-w-[85%] sm:max-w-sm rounded-xl shadow-lg transition-all duration-300 ${
                         isCurrentUser
                           ? "bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-br-none"
                           : "bg-white/10 backdrop-blur-lg rounded-bl-none border border-purple-500/30"
@@ -218,7 +229,7 @@ const Chat = () => {
                         <img
                           src={message.media_url}
                           alt="Message attachment"
-                          className="w-full max-w-sm rounded-xl mb-1 shadow-[0_0_10px_rgba(255,0,255,0.5)]"
+                          className="w-full max-w-full rounded-xl mb-1 shadow-[0_0_10px_rgba(255,0,255,0.5)] object-contain"
                         />
                       )}
                       {message.text && <p>{message.text}</p>}

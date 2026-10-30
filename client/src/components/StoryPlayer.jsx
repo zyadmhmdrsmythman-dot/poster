@@ -74,7 +74,7 @@ const StoryPlayer = ({
           <img
             src={url}
             alt="Story"
-            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl select-none"
+            className="max-w-[95vw] sm:max-w-full max-h-[80vh] sm:max-h-[85vh] object-contain rounded-xl shadow-2xl select-none"
           />
         );
       case "video":
@@ -84,12 +84,12 @@ const StoryPlayer = ({
             autoPlay
             onEnded={handleClose}
             controls
-            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+            className="max-w-[95vw] sm:max-w-full max-h-[80vh] sm:max-h-[85vh] object-contain rounded-xl shadow-2xl"
           />
         );
       case "text":
         return (
-          <div className="w-full max-w-xl p-8 text-white text-2xl sm:text-3xl font-semibold text-center leading-relaxed select-none">
+          <div className="w-full max-w-xl p-5 sm:p-8 text-white text-xl sm:text-3xl font-semibold text-center leading-relaxed select-none">
             {viewStory.content}
           </div>
         );
@@ -119,13 +119,13 @@ const StoryPlayer = ({
       )}
 
       {/* بيانات صاحب الستوري */}
-      <div className="absolute top-4 left-4 sm:left-8 flex items-center gap-3 p-2 px-4 rounded-full bg-black/40 backdrop-blur-md z-30 border border-white/10 shadow-lg">
+      <div className="absolute top-3 left-3 sm:top-4 sm:left-8 flex items-center gap-2.5 sm:gap-3 p-1.5 sm:p-2 px-3 sm:px-4 rounded-full bg-black/50 backdrop-blur-md z-30 border border-white/10 shadow-lg">
         <img
           src={viewStory.user?.profile_picture || "/default-profile.png"}
           alt="Profile"
-          className="size-8 rounded-full object-cover border border-white/20"
+          className="size-7 sm:size-8 rounded-full object-cover border border-white/20"
         />
-        <div className="text-white font-medium flex items-center gap-1.5 text-sm">
+        <div className="text-white font-medium flex items-center gap-1.5 text-xs sm:text-sm">
           <span>{viewStory.user?.full_name || viewStory.user?.username || "User"}</span>
         </div>
       </div>
@@ -133,17 +133,17 @@ const StoryPlayer = ({
       {/* زر الإغلاق */}
       <button
         onClick={handleClose}
-        className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/15 transition z-30 cursor-pointer"
+        className="absolute top-3 right-3 sm:top-4 sm:right-4 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-full hover:bg-white/15 transition z-30 cursor-pointer"
         title="إغلاق (Close)"
       >
-        <X className="w-7 h-7" />
+        <X className="w-6 h-6 sm:w-7 sm:h-7" />
       </button>
 
       {/* زر الانتقال للستوري التالي الجانبي */}
       <button
         type="button"
         onClick={handleNext}
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white backdrop-blur-md border border-white/20 transition-all duration-200 cursor-pointer shadow-xl active:scale-90"
+        className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white backdrop-blur-md border border-white/20 transition-all duration-200 cursor-pointer shadow-xl active:scale-90"
         title="الستوري التالي"
         aria-label="Next story"
       >
@@ -151,18 +151,18 @@ const StoryPlayer = ({
       </button>
 
       {/* عرض محتوى الستوري */}
-      <div className="max-w-[90vw] max-h-[85vh] flex items-center justify-center z-10">
+      <div className="max-w-[95vw] sm:max-w-[90vw] max-h-[80vh] sm:max-h-[85vh] flex items-center justify-center z-10">
         {renderContent()}
       </div>
 
       {/* شريط التحكم السفلي */}
-      <div className="absolute bottom-6 left-4 right-4 flex items-center justify-between z-30 sm:left-8 sm:right-8">
+      <div className="absolute bottom-4 left-3 right-3 sm:bottom-6 sm:left-8 sm:right-8 flex items-center justify-between z-30">
         {canDelete ? (
           <button
             type="button"
             onClick={onDelete}
             disabled={isDeleting}
-            className="flex items-center gap-2 rounded-full bg-red-600/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-lg"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-red-600/80 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-lg"
             aria-label="Delete story"
           >
             <Trash2 className="h-4 w-4" />
@@ -175,11 +175,11 @@ const StoryPlayer = ({
         <button
           type="button"
           onClick={handleNext}
-          className="flex items-center gap-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white transition duration-200 cursor-pointer shadow-lg active:scale-95 border border-white/20"
+          className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white transition duration-200 cursor-pointer shadow-lg active:scale-95 border border-white/20"
           aria-label="Go to next story"
         >
           <span>التالي</span>
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
       </div>
     </div>
