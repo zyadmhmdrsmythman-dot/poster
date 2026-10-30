@@ -4,6 +4,17 @@ export const setGroupSocketServer = (io) => {
   socketServer = io;
 };
 
+export const getSocketServer = () => socketServer;
+
+export const emitGlobalEvent = (event, payload) => {
+  if (!socketServer) return;
+  try {
+    socketServer.emit(event, payload);
+  } catch (error) {
+    console.error("Socket emitGlobalEvent error:", error.message);
+  }
+};
+
 export const emitGroupEvent = (groupId, event, payload) => {
   if (!socketServer) {
     throw new Error("Group Socket.IO server is not initialized");

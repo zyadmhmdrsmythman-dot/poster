@@ -1,10 +1,11 @@
-﻿import fs from "fs";
+import fs from "fs";
 import Story from "../models/Story.js";
 import { getAuth } from "@clerk/express";
 
 import { inngest } from "../inngest/index.js";
 import imagekit from "../configs/imagekit.js";
 import { getOrCreateUser } from "../utils/user.js";
+import { emitGlobalEvent } from "../utils/groupSocket.js";
 
 export const addUserStory = async (req, res) => {
   try {
@@ -48,7 +49,10 @@ export const addUserStory = async (req, res) => {
       data: { storyId: story._id },
     });
 
-    return res.json({ success: true });
+    const populatedStory = await Story.findById(story._id).populate("user");
+    emitGlobalEvent("story_created", populatedStory);
+
+    return res.json({ success: true, story: populatedStory });
   } catch (error) {
     console.error("Error creating story:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -104,7 +108,9 @@ export const deleteUserStory = async (req, res) => {
       });
     }
 
-    return res.json({ success: true });
+    emitGlobalEvent("story_deleted", { storyId: req.params.storyId });
+
+    return res.json({ success: true, storyId: req.params.storyId });
   } catch (error) {
     console.error("Error deleting story:", error);
     return res.status(500).json({ success: false, message: error.message });

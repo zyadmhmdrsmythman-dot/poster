@@ -1,11 +1,12 @@
 import { Plus } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import StoryWindow from "./StoryWindow";
 import StoryPlayer from "./StoryPlayer";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api from "../api/axios.js";
 import toast from "react-hot-toast";
+import socket from "../lib/groupSocket.js";
 
 const StoriesBar = () => {
   const [stories, setStories] = useState([]);
@@ -15,25 +16,105 @@ const StoriesBar = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
 
-  const fetchStories = async () => {
+  const fetchStories = useCallback(async () => {
     try {
       const token = await getToken();
+      if (!token) return;
       const { data } = await api.get("/api/story/get", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (data.success) {
+      if (data.success && Array.isArray(data.stories)) {
         setStories(data.stories);
-      } else {
-        toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      console.error("Error fetching stories:", error);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchStories();
-  }, []);
+
+    // تهيئة اتصال السوكيت للاستماع للأحداث اللحظية
+    const initSocket = async () => {
+      try {
+        const token = await getToken();
+        if (token && !socket.connected) {
+          socket.auth = { token };
+          socket.connect();
+        }
+      } catch (e) {
+        console.error("Socket error in StoriesBar:", e);
+      }
+    };
+    initSocket();
+
+    // الاستماع لأحداث التطبيق المحلية (CustomEvent)
+    const handleStoryCreated = (event) => {
+      const newStory = event.detail;
+      if (newStory && newStory._id) {
+        setStories((prev) => [
+          newStory,
+          ...prev.filter((s) => s._id !== newStory._id),
+        ]);
+      }
+      fetchStories();
+    };
+
+    const handleStoryDeleted = (event) => {
+      const deletedId =
+        typeof event.detail === "object"
+          ? event.detail?.storyId
+          : event.detail;
+      if (deletedId) {
+        setStories((prev) => prev.filter((s) => s._id !== deletedId));
+        setViewStory((current) =>
+          current?._id === deletedId ? null : current
+        );
+      }
+      fetchStories();
+    };
+
+    // الاستماع لأحداث السوكيت في الوقت الفعلي من أي مستخدم آخر
+    const onSocketStoryCreated = (story) => {
+      if (story && story._id) {
+        setStories((prev) => [
+          story,
+          ...prev.filter((s) => s._id !== story._id),
+        ]);
+      }
+      fetchStories();
+    };
+
+    const onSocketStoryDeleted = ({ storyId }) => {
+      if (storyId) {
+        setStories((prev) => prev.filter((s) => s._id !== storyId));
+        setViewStory((current) =>
+          current?._id === storyId ? null : current
+        );
+      }
+    };
+
+    window.addEventListener("story_created", handleStoryCreated);
+    window.addEventListener("story_deleted", handleStoryDeleted);
+    window.addEventListener("story-updated", fetchStories);
+    window.addEventListener("focus", fetchStories);
+
+    socket.on("story_created", onSocketStoryCreated);
+    socket.on("story_deleted", onSocketStoryDeleted);
+
+    // تحديث دوري هادئ كل 15 ثانية لجلب الستوريز الجديدة بدون إعادة تحميل الصفحة
+    const interval = setInterval(fetchStories, 15000);
+
+    return () => {
+      window.removeEventListener("story_created", handleStoryCreated);
+      window.removeEventListener("story_deleted", handleStoryDeleted);
+      window.removeEventListener("story-updated", fetchStories);
+      window.removeEventListener("focus", fetchStories);
+      socket.off("story_created", onSocketStoryCreated);
+      socket.off("story_deleted", onSocketStoryDeleted);
+      clearInterval(interval);
+    };
+  }, [fetchStories, getToken]);
 
   const handleNextStory = () => {
     if (!viewStory || !stories || stories.length === 0) {
@@ -51,22 +132,41 @@ const StoriesBar = () => {
 
   const handleDeleteStory = async () => {
     if (!viewStory) return;
+    const storyIdToDelete = viewStory._id;
+
     try {
       setIsDeleting(true);
       const token = await getToken();
-      const { data } = await api.delete(`/api/story/${viewStory._id}`, {
+      const { data } = await api.delete(`/api/story/${storyIdToDelete}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) {
         toast.success("تم حذف الستوري بنجاح");
-        const remainingStories = stories.filter((s) => s._id !== viewStory._id);
+
+        const currentIndex = stories.findIndex((s) => s._id === storyIdToDelete);
+        const remainingStories = stories.filter((s) => s._id !== storyIdToDelete);
+
+        // تحديث الحالة فورياً
         setStories(remainingStories);
-        handleNextStory();
+
+        // الانتقال للستوري التالي أو الإغلاق إذا لم يتبق شيء
+        if (currentIndex !== -1 && currentIndex < remainingStories.length) {
+          setViewStory(remainingStories[currentIndex]);
+        } else {
+          setViewStory(null);
+        }
+
+        // إرسال إشعار لحظي للمتصفح
+        window.dispatchEvent(
+          new CustomEvent("story_deleted", { detail: { storyId: storyIdToDelete } })
+        );
       } else {
         toast.error(data.message || "فشل في حذف الستوري");
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "حدث خطأ أثناء الحذف");
+      toast.error(
+        error.response?.data?.message || error.message || "حدث خطأ أثناء الحذف"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -129,7 +229,12 @@ const StoriesBar = () => {
           ))}
         </div>
         {/* Create Story Modal */}
-        {showModal && <StoryWindow setShowModal={setShowModal} fetchStories={fetchStories} />}
+        {showModal && (
+          <StoryWindow
+            setShowModal={setShowModal}
+            fetchStories={fetchStories}
+          />
+        )}
       </div>
 
       {/* full-screen story Viewer */}
