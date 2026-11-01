@@ -1,11 +1,12 @@
 import axios from "axios";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowUpLeft, MessageCircle, UsersRound } from "lucide-react";
 
 const JoinedGroups = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -19,8 +20,11 @@ const JoinedGroups = () => {
     const fetchJoinedGroups = async () => {
       setLoading(true);
       try {
+        const token = await getToken();
+        if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
         const res = await axios.get(
-          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/joined/${user.id}`
+          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/joined/${user.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         const payload = Array.isArray(res.data)
@@ -37,7 +41,7 @@ const JoinedGroups = () => {
     };
 
     fetchJoinedGroups();
-  }, [user?.id]);
+  }, [user?.id, getToken]);
 
   const goToGroupChat = (groupId) => {
     navigate(`/groups/chat/${groupId}`);

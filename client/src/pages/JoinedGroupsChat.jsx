@@ -141,10 +141,16 @@ const JoinedGroupsChat = () => {
 
     const initializeChat = async () => {
       try {
+        const token = await getToken();
+        if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
         const [groupResponse, messagesResponse] = await Promise.all([
-          axios.get(`${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}`),
           axios.get(
-            `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/messages`
+            `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          ),
+          axios.get(
+            `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/messages`,
+            { headers: { Authorization: `Bearer ${token}` } }
           ),
         ]);
         if (!active) return;
@@ -168,8 +174,6 @@ const JoinedGroupsChat = () => {
 
         setGroup(groupData);
         setMessages(messageData);
-        const token = await getToken();
-        if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
         socket.auth = { token };
         if (socket.connected) socket.disconnect();
         socket.connect();

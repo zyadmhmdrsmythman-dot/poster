@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 
 const GroupRequestsManager = ({ ownerId }) => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [groups, setGroups] = useState([]);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -17,8 +18,11 @@ const GroupRequestsManager = ({ ownerId }) => {
     const fetchOwnedGroups = async () => {
       if (!currentOwnerId) return;
       try {
+        const token = await getToken();
+        if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
         const res = await axios.get(
-          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${currentOwnerId}`
+          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${currentOwnerId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         const payload = Array.isArray(res.data)
           ? res.data
@@ -31,13 +35,16 @@ const GroupRequestsManager = ({ ownerId }) => {
     };
 
     fetchOwnedGroups();
-  }, [currentOwnerId]);
+  }, [currentOwnerId, getToken]);
 
   const acceptRequest = async (groupId, userId) => {
     try {
+      const token = await getToken();
+      if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
       await axios.post(
         `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/accept`,
-        { userId }
+        { userId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("تم قبول العضو بنجاح");
       setGroups((prev) =>

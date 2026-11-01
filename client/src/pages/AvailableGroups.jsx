@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -7,6 +7,7 @@ import { Clock, MessageCircle } from "lucide-react";
 
 const AvailableGroups = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -19,8 +20,11 @@ const AvailableGroups = () => {
     }
     try {
       setLoading(true);
+      const token = await getToken();
+      if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
       const res = await axios.get(
-        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/available?userId=${userId}`
+        `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/available`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setGroups(res.data || []);
     } catch (err) {
@@ -32,23 +36,23 @@ const AvailableGroups = () => {
 
   useEffect(() => {
     fetchGroups();
-  }, [userId]);
+  }, [userId, getToken]);
 
   const requestJoin = async (groupId) => {
     if (!userId) return;
     try {
+      const token = await getToken();
+      if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
       const res = await axios.post(
         `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/${groupId}/join`,
-        { userId }
+        { userId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success(res.data?.message || "تم إرسال طلب الانضمام بنجاح");
       setGroups((prev) =>
         prev.map((g) =>
           g._id === groupId
-            ? {
-                ...g,
-                members: [...(g.members || []), { userId, status: "pending" }],
-              }
+            ? { ...g, currentUserStatus: "pending" }
             : g
         )
       );
@@ -77,12 +81,9 @@ const AvailableGroups = () => {
           <p className="text-gray-400 text-sm py-4">لا توجد مجموعات متاحة حالياً</p>
         ) : (
           groups.map((g) => {
-            const userMember = g.members?.find(
-              (m) => String(m.userId) === String(userId)
-            );
-            const isOwner = String(g.owner) === String(userId);
-            const isAccepted = userMember?.status === "accepted";
-            const isPending = userMember?.status === "pending";
+            const isOwner = g.isOwner;
+            const isAccepted = g.currentUserStatus === "accepted";
+            const isPending = g.currentUserStatus === "pending";
 
             return (
               <div
@@ -98,7 +99,7 @@ const AvailableGroups = () => {
                       {g.name}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {g.members?.filter((m) => m.status === "accepted").length || 0} عضو
+                      {g.memberCount || 0} عضو
                     </span>
                   </div>
                 </div>

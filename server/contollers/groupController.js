@@ -5,8 +5,8 @@ import { emitGroupEvent } from "../utils/groupSocket.js";
 
 export const createGroup = async (req, res) => {
   try {
-    const { name, owner, userId } = req.body;
-    const validOwner = owner || userId;
+    const { name } = req.body;
+    const validOwner = req.userId;
 
     if (!name || !validOwner) {
       return res.status(400).json({ error: "Group name and owner are required" });
@@ -298,8 +298,22 @@ export const setGroupChatLock = async (req, res) => {
 
 export const getAvailableGroups = async (req, res) => {
   try {
-    const groups = await Group.find();
-    res.json(groups);
+    const groups = await Group.find().select("name owner chatLocked members").lean();
+    res.json(
+      groups.map((group) => ({
+        _id: group._id,
+        name: group.name,
+        chatLocked: group.chatLocked,
+        memberCount: group.members.filter(
+          (member) => member.status === "accepted"
+        ).length,
+        currentUserStatus:
+          group.members.find(
+            (member) => String(member.userId) === String(req.userId)
+          )?.status || null,
+        isOwner: String(group.owner) === String(req.userId),
+      }))
+    );
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
@@ -308,11 +322,7 @@ export const getAvailableGroups = async (req, res) => {
 export const joinGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
-    }
+    const userId = req.userId;
 
     const group = await Group.findById(id);
     if (!group) {
@@ -350,6 +360,18 @@ export const getGroupRequests = async (req, res) => {
     const group = await Group.findById(req.params.id);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
+    const member = group.members.find(
+      (groupMember) =>
+        String(groupMember.userId) === String(req.userId) &&
+        groupMember.status === "accepted"
+    );
+    if (
+      String(group.owner) !== String(req.userId) &&
+      member?.role !== "admin"
+    ) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
     const pendingRequests = group.members.filter((m) => m.status === "pending");
     res.json(pendingRequests);
   } catch (err) {
@@ -365,7 +387,23 @@ export const acceptMember = async (req, res) => {
 
     if (!group) return res.status(404).json({ error: "Group not found" });
 
-    const member = group.members.find((m) => m.userId === userId);
+    const requester = group.members.find(
+      (groupMember) =>
+        String(groupMember.userId) === String(req.userId) &&
+        groupMember.status === "accepted"
+    );
+    if (
+      String(group.owner) !== String(req.userId) &&
+      requester?.role !== "admin"
+    ) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    const member = group.members.find(
+      (groupMember) =>
+        String(groupMember.userId) === String(userId) &&
+        groupMember.status === "pending"
+    );
     if (!member) return res.status(404).json({ message: "Request not found" });
 
     member.status = "accepted";
@@ -378,6 +416,21 @@ export const acceptMember = async (req, res) => {
 
 export const getGroupMessages = async (req, res) => {
   try {
+    const group = await Group.findById(req.params.id).select("owner members");
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    const isAcceptedMember = group.members.some(
+      (member) =>
+        String(member.userId) === String(req.userId) &&
+        member.status === "accepted"
+    );
+    if (!isAcceptedMember) {
+      return res.status(403).json({
+        success: false,
+        message: "Only accepted group members can view messages",
+      });
+    }
+
     const messages = await GroupMessage.find({ groupId: req.params.id })
       .sort({ createdAt: 1 })
       .lean();
@@ -400,7 +453,7 @@ export const getGroupMessages = async (req, res) => {
 
 export const getJoinedGroups = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.userId;
     const groups = await Group.find({
       members: { $elemMatch: { userId, status: "accepted" } },
     });

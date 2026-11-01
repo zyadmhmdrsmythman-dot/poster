@@ -1,10 +1,11 @@
 import axios from "axios";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const GroupChat = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [groups, setGroups] = useState([]);
   const [groupName, setGroupName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -13,8 +14,11 @@ const GroupChat = () => {
     const fetchGroups = async () => {
       if (!user?.id) return;
       try {
+        const token = await getToken();
+        if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
         const res = await axios.get(
-          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${user.id}`
+          `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group/owned/${user.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         const payload = Array.isArray(res.data)
           ? res.data
@@ -29,7 +33,7 @@ const GroupChat = () => {
       }
     };
     fetchGroups();
-  }, [user?.id]);
+  }, [user?.id, getToken]);
 
   const createdGroup = async () => {
     if (!groupName.trim()) {
@@ -37,12 +41,15 @@ const GroupChat = () => {
     }
     try {
       setCreating(true);
+      const token = await getToken();
+      if (!token) throw new Error("تعذر التحقق من تسجيل الدخول");
       const res = await axios.post(
         `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/group`,
         {
           name: groupName.trim(),
           owner: user.id,
-        }
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("تم إنشاء المجموعة بنجاح");
       setGroups((prev) => [...prev, res.data]);

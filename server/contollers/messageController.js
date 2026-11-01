@@ -8,7 +8,10 @@ import {
 } from "../utils/eventStream.js";
 
 export const sseController = (req, res) => {
-    const { userId } = req.params;
+    const userId = req.userId;
+    if (req.params.userId !== userId) {
+        return res.status(403).json({ success: false, message: "Forbidden" });
+    }
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");

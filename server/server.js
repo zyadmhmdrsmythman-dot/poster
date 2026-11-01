@@ -1,8 +1,5 @@
 import "dotenv/config";
 
-process.env.CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || "pk_test_Z3VpZGluZy10dXJ0bGUtNzQ5OS5jbGVyay5hY2NvdW50cy5kZXYk";
-process.env.CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q";
-
 import express from "express";
 import cors from "cors";
 import { serve } from "inngest/express";
@@ -24,6 +21,14 @@ import groupRouter from "./routes/groupRoutes.js"
 import adminRouter from "./routes/adminRoutes.js"
 import { setGroupSocketServer } from "./utils/groupSocket.js";
 
+const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+const inngestSigningKey = process.env.INNGEST_SIGNING_KEY;
+if (!clerkPublishableKey || !clerkSecretKey || !inngestSigningKey) {
+  throw new Error(
+    "Missing CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, or INNGEST_SIGNING_KEY"
+  );
+}
 
 const app = express();
 const httpServer = createServer(app)
@@ -44,8 +49,8 @@ app.use(async (_req, res, next) => {
   }
 });
 app.use(clerkMiddleware({
-  publishableKey: process.env.CLERK_PUBLISHABLE_KEY || "pk_test_Z3VpZGluZy10dXJ0bGUtNzQ5OS5jbGVyay5hY2NvdW50cy5kZXYk",
-  secretKey: process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q",
+  publishableKey: clerkPublishableKey,
+  secretKey: clerkSecretKey,
 }));
 const allowedSocketOrigins = [
   (process.env.FRONTEND_URL || "https://poster-a.vercel.app"),
@@ -66,12 +71,12 @@ io.use(async (socket, next) => {
   try {
     await connectDB();
     const token = socket.handshake.auth?.token;
-    if (!token || !(process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q")) {
+    if (!token) {
       return next(new Error("Authentication required"));
     }
 
     const payload = await verifyToken(token, {
-      secretKey: (process.env.CLERK_SECRET_KEY || "sk_test_I2NT5zNpiJrNMJlccaJODh3a0kClWqGkYGaLdcOr7Q"),
+      secretKey: clerkSecretKey,
     });
     if (!payload.sub) {
       return next(new Error("Invalid authentication token"));
@@ -206,7 +211,7 @@ app.use(
   serve({
     client: inngest,
     functions,
-    signingKey: process.env.INNGEST_SIGNING_KEY || "signkey-prod-ce96989a79c777feb117ad057e484e18f066cc9b9875d50972f7c872da7299b9",
+    signingKey: inngestSigningKey,
   })
 );
 

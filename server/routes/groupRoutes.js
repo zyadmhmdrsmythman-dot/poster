@@ -38,10 +38,13 @@ const addMemberProfiles = async (groups) => {
   });
 };
 
-router.post("/", createGroup);
-router.get("/available", getAvailableGroups);
-router.get("/owned/:ownerId", async (req, res) => {
+router.post("/", protect, createGroup);
+router.get("/available", protect, getAvailableGroups);
+router.get("/owned/:ownerId", protect, async (req, res) => {
   try {
+    if (String(req.params.ownerId) !== String(req.userId)) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
     const groups = await Group.find({ owner: req.params.ownerId });
     res.json({ groups: await addMemberProfiles(groups) });
   } catch (err) {
@@ -49,29 +52,44 @@ router.get("/owned/:ownerId", async (req, res) => {
   }
 });
 
-router.post("/:id/join", joinGroup);
+router.post("/:id/join", protect, joinGroup);
 router.patch("/:id/admin", protect, addGroupAdmin);
 router.delete("/:id/members/:targetUserId", protect, removeGroupMember);
 router.delete("/:id/admin/:targetUserId", protect, removeGroupAdmin);
 router.delete("/:id/leave", protect, leaveGroup);
 router.patch("/:id/chat-lock", protect, setGroupChatLock);
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", protect, async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group) return res.status(404).json({ error: "Group not found" });
 
+    const isAcceptedMember = group.members.some(
+      (member) =>
+        String(member.userId) === String(req.userId) &&
+        member.status === "accepted"
+    );
+    if (!isAcceptedMember) {
+      return res.status(403).json({
+        success: false,
+        message: "Only accepted group members can view this group",
+      });
+    }
+
     const [groupData] = await addMemberProfiles([group]);
+    groupData.members = groupData.members.filter(
+      (member) => member.status === "accepted"
+    );
     res.json(groupData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get("/:id/requests", getGroupRequests);
-router.post("/:id/accept", acceptMember);
-router.get("/:id/messages", getGroupMessages);
-router.get("/joined/:userId", getJoinedGroups);
-router.post("/:id/:join", joinGroup);
+router.get("/:id/requests", protect, getGroupRequests);
+router.post("/:id/accept", protect, acceptMember);
+router.get("/:id/messages", protect, getGroupMessages);
+router.get("/joined/:userId", protect, getJoinedGroups);
+router.post("/:id/:join", protect, joinGroup);
 
 export default router

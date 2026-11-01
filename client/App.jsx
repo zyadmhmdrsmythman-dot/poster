@@ -53,13 +53,10 @@ const App = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const eventSource = new EventSource(
-      `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/message/${user.id}`
-    );
-
-    eventSource.onmessage = (event) => {
+    const controller = new AbortController();
+    const handleEvent = (data) => {
       try {
-        const payload = JSON.parse(event.data);
+        const payload = JSON.parse(data);
         if (payload.type === "message") {
           window.dispatchEvent(new Event("message-received"));
           if (pathnameRef.current === `/messages/${payload.message.from_user_id}`) {
@@ -75,12 +72,57 @@ const App = () => {
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("Message event stream encountered an error:", error);
+    const connectEventStream = async () => {
+      while (!controller.signal.aborted) {
+        try {
+          const token = await getToken();
+          if (!token) throw new Error("Missing authentication token");
+          const response = await fetch(
+            `${(import.meta.env.VITE_BASEURL || "https://poster-a.vercel.app")}/api/message/${user.id}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: controller.signal,
+            }
+          );
+          if (!response.ok) {
+            throw new Error(`Message event stream failed: ${response.status}`);
+          }
+          if (!response.body) {
+            throw new Error("Message event stream response has no body");
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (!controller.signal.aborted) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split(/\r?\n\r?\n/);
+            buffer = events.pop() || "";
+            for (const event of events) {
+              const data = event
+                .split(/\r?\n/)
+                .filter((line) => line.startsWith("data:"))
+                .map((line) => line.slice(5).trimStart())
+                .join("\n");
+              if (data) handleEvent(data);
+            }
+          }
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          console.error("Message event stream encountered an error:", error);
+        }
+
+        if (!controller.signal.aborted) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+      }
     };
 
-    return () => eventSource.close();
-  }, [user?.id, dispatch]);
+    connectEventStream();
+    return () => controller.abort();
+  }, [user?.id, dispatch, getToken]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user?.id) return undefined;
