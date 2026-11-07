@@ -6,6 +6,7 @@ import {
     removeEventStreamClient,
     sendEventToUser,
 } from "../utils/eventStream.js";
+import { sendDirectMessageEmail } from "../utils/interactionEmail.js";
 
 export const sseController = (req, res) => {
     const userId = req.userId;
@@ -60,6 +61,7 @@ export const sendMessage = async(req,res)=>{
     })
 
     sendEventToUser(to_user_id, { type: "message", message });
+    await sendDirectMessageEmail({ recipientId: to_user_id, senderId: userId });
 
     res.json({success:true , message})
 }catch(error){

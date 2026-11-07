@@ -5,6 +5,7 @@ import Post from "../models/Post.js";
 import { getAuth } from "@clerk/express";
 import { createdNotifiction } from "./notificationController.js";
 import { broadcastEvent } from "../utils/eventStream.js";
+import { sendPostInteractionEmail } from "../utils/interactionEmail.js";
 
 const getUserData = async (userId) => {
   return (
@@ -171,6 +172,14 @@ export const linkPost = async (req, res) => {
       }
     }
     await post.save();
+    if (!isLiked && post.user !== userId) {
+      await sendPostInteractionEmail({
+        recipientId: post.user,
+        actorId: userId,
+        postId: post._id,
+        type: "like",
+      });
+    }
     res.json({
       success: true,
       message: isLiked ? "Post unliked" : "Post liked",
@@ -226,6 +235,13 @@ export const addComment = async (req, res) => {
         type: "comment",
         postId: post._id,
         commentText:text,
+      });
+      await sendPostInteractionEmail({
+        recipientId: post.user,
+        actorId: userId,
+        postId: post._id,
+        type: "comment",
+        commentText: text,
       });
     }
 
