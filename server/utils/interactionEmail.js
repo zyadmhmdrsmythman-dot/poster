@@ -1,3 +1,4 @@
+import { clerkClient } from "@clerk/express";
 import User from "../models/User.js";
 import sendEmail from "../configs/nodeMailer.js";
 
@@ -17,14 +18,20 @@ const escapeHtml = (value = "") =>
   });
 
 const getEmailRecipient = async (recipientId, eventName) => {
-  const recipient = await User.findById(recipientId).select("email");
-  if (!recipient?.email) {
+  const clerkUser = await clerkClient.users.getUser(String(recipientId));
+  const email =
+    clerkUser.primaryEmailAddress?.emailAddress ||
+    clerkUser.emailAddresses?.[0]?.emailAddress;
+
+  if (!email) {
     console.warn(
       `Immediate ${eventName} email skipped: recipient ${recipientId} has no email address`,
     );
     return null;
   }
-  return recipient.email;
+
+  await User.updateOne({ _id: recipientId }, { $set: { email } });
+  return email;
 };
 
 export const sendPostInteractionEmail = async ({
